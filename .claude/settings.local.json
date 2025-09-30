@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:api.github.com)",
+      "WebSearch",
+      "Bash(git clone:*)",
+      "Bash(dir:*)",
+      "Bash(copy main.py main_backup.py)",
+      "Bash(cat:*)",
+      "Bash(python:*)",
+      "Bash(netstat:*)",
+      "Bash(taskkill:*)",
+      "Bash(findstr:*)",
+      "Bash(del review_system.db)",
+      "Bash(curl:*)",
+      "Bash(copy:*)",
+      "Bash(xcopy:*)",
+      "Bash(del system.py complete_system.py complete_system.db working_system.db)",
+      "Bash(del final_complete_system.db)",
+      "Bash(if exist final_complete_system.db del final_complete_system.db)",
+      "Read(//c/Users/wlstn/Desktop/**)",
+      "Bash(powershell:*)",
+      "Bash(tasklist)",
+      "Bash(pip install:*)",
+      "Bash(if exist review_system.db del review_system.db)",
+      "Bash(tasklist:*)",
+      "Bash(sqlite3:*)",
+      "Bash(cmd /c taskkill:*)",
+      "Bash(timeout:*)",
+      "Bash(git remote set-url:*)",
+      "Bash(git add:*)",
+      "Bash(git rm:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
