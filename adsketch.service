@@ -1,0 +1,23 @@
+[Unit]
+Description=AdSketch Review Management System
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/var/www/adsketch
+Environment=PATH=/var/www/adsketch/venv/bin
+Environment=PYTHONPATH=/var/www/adsketch
+Environment=SERVER_ENV=production
+Environment=DATABASE_PATH=/var/www/adsketch/data/final_complete_system.db
+Environment=CHROME_DRIVER_PATH=/usr/local/bin/chromedriver
+ExecStart=/var/www/adsketch/venv/bin/python /var/www/adsketch/naver_review_automation/final_complete_system.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

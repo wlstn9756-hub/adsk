@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  adsketch:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - SERVER_ENV=production
+      - DATABASE_URL=sqlite:///data/final_complete_system.db
+      - ADMIN_USERNAME=adsketch
+      - ADMIN_PASSWORD=doem1!
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
