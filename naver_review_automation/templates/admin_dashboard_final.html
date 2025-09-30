@@ -60,9 +60,14 @@
             <div class="bg-white rounded-lg shadow">
                 <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
                     <h3 class="text-lg font-semibold text-gray-900">전체 작업 목록</h3>
-                    <button onclick="exportToExcel()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
-                        <i class="fas fa-file-excel mr-2"></i>미승인 작업 다운로드
-                    </button>
+                    <div class="flex gap-2">
+                        <button onclick="exportToExcel()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                            <i class="fas fa-file-excel mr-2"></i>미승인 작업 다운로드
+                        </button>
+                        <button onclick="exportReport()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
+                            <i class="fas fa-chart-bar mr-2"></i>완료 리포트 다운로드
+                        </button>
+                    </div>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full">
@@ -551,6 +556,10 @@
         // 엑셀 다운로드 (미승인 작업만)
         function exportToExcel() {
             window.location.href = '/api/admin/export/excel';
+        }
+
+        function exportReport() {
+            window.location.href = '/api/admin/export/report';
         }
 
         // 고객사 등록 모달

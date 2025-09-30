@@ -1070,44 +1070,101 @@ async def export_excel(
     db: Session = Depends(get_db)
 ):
     """미승인 작업만 엑셀로 내보내기"""
-    orders = db.query(ReceiptWorkOrder).filter(
-        ReceiptWorkOrder.status == "pending"
-    ).all()
+    try:
+        orders = db.query(ReceiptWorkOrder).filter(
+            ReceiptWorkOrder.status == "pending"
+        ).all()
 
-    data = []
-    for order in orders:
-        data.append({
-            '주문번호': order.order_no,
-            '고객사': order.company.display_name if order.company else "",
-            '업체명': order.business_name,
-            '대표자': order.representative_name,
-            '사업자번호': order.business_number,
-            '주소': order.business_address,
-            '시작일': order.start_date.strftime('%Y-%m-%d'),
-            '종료일': order.end_date.strftime('%Y-%m-%d'),
-            '일일작업량': order.daily_count,
-            '총작업량': order.total_count,
-            '단가': order.unit_price,
-            '총금액': order.total_price,
-            '등록일': order.created_at.strftime('%Y-%m-%d %H:%M'),
-            '요청자': order.client.full_name if order.client else ""
-        })
+        data = []
+        for order in orders:
+            data.append({
+                '주문번호': order.order_no,
+                '고객사': order.company.display_name if order.company else "",
+                '업체명': order.business_name,
+                '대표자': order.representative_name,
+                '사업자번호': order.business_number,
+                '주소': order.business_address,
+                '시작일': order.start_date.strftime('%Y-%m-%d'),
+                '종료일': order.end_date.strftime('%Y-%m-%d'),
+                '일일작업량': order.daily_count,
+                '총작업량': order.total_count,
+                '단가': order.unit_price,
+                '총금액': order.total_price,
+                '등록일': order.created_at.strftime('%Y-%m-%d %H:%M'),
+                '요청자': order.client.full_name if order.client else ""
+            })
 
-    df = pd.DataFrame(data)
-    output = BytesIO()
+        df = pd.DataFrame(data)
+        output = BytesIO()
 
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='미승인작업')
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='미승인작업')
 
-    output.seek(0)
+        output.seek(0)
 
-    return StreamingResponse(
-        output,
-        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        headers={
-            "Content-Disposition": f"attachment; filename=pending_orders_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-        }
-    )
+        return StreamingResponse(
+            output,
+            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={
+                "Content-Disposition": f"attachment; filename*=UTF-8''pending_orders_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+            }
+        )
+    except Exception as e:
+        return JSONResponse({"success": False, "message": str(e)}, status_code=500)
+
+@app.get("/api/admin/export/report")
+async def export_report(
+    user = Depends(require_super_admin),
+    db: Session = Depends(get_db)
+):
+    """완료된 작업 리포트 엑셀로 내보내기"""
+    try:
+        orders = db.query(ReceiptWorkOrder).filter(
+            ReceiptWorkOrder.status == "approved"
+        ).all()
+
+        data = []
+        for order in orders:
+            # 리뷰 수 계산
+            review_count = db.query(Review).filter(Review.order_id == order.id).count()
+
+            data.append({
+                '주문번호': order.order_no,
+                '고객사': order.company.display_name if order.company else "",
+                '업체명': order.business_name,
+                '대표자': order.representative_name,
+                '사업자번호': order.business_number,
+                '주소': order.business_address,
+                '시작일': order.start_date.strftime('%Y-%m-%d'),
+                '종료일': order.end_date.strftime('%Y-%m-%d'),
+                '일일작업량': order.daily_count,
+                '총작업량': order.total_count,
+                '리뷰수': review_count,
+                '단가': order.unit_price,
+                '총금액': order.total_price,
+                '상태': '완료',
+                '등록일': order.created_at.strftime('%Y-%m-%d %H:%M'),
+                '승인일': order.updated_at.strftime('%Y-%m-%d %H:%M') if order.updated_at else "",
+                '요청자': order.client.full_name if order.client else ""
+            })
+
+        df = pd.DataFrame(data)
+        output = BytesIO()
+
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='완료작업')
+
+        output.seek(0)
+
+        return StreamingResponse(
+            output,
+            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={
+                "Content-Disposition": f"attachment; filename*=UTF-8''report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+            }
+        )
+    except Exception as e:
+        return JSONResponse({"success": False, "message": str(e)}, status_code=500)
 
 # 고객사 관리 API
 @app.get("/api/admin/clients")
