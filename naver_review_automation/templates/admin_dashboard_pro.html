@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Sketch Review</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+        .gradient-yellow {
+            background: linear-gradient(135deg, #FCD34D 0%, #FDE047 100%);
+        }
+        .gradient-blue {
+            background: linear-gradient(135deg, #60A5FA 0%, #3B82F6 100%);
+        }
+        .gradient-green {
+            background: linear-gradient(135deg, #34D399 0%, #10B981 100%);
+        }
+        .gradient-purple {
+            background: linear-gradient(135deg, #A78BFA 0%, #8B5CF6 100%);
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.15);
+        }
+        .status-badge {
+            position: relative;
+            overflow: hidden;
+        }
+        .status-badge::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            animation: shimmer 2s infinite;
+        }
+        @keyframes shimmer {
+            to { left: 100%; }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+    <!-- 헤더 네비게이션 -->
+    <nav class="bg-white shadow-lg border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <div class="flex items-center space-x-3">
+                        <h1 class="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                            Sketch Review
+                        </h1>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="/admin/clients" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+                        <i class="fas fa-users mr-2"></i>고객사 관리
+                    </a>
+                    <span class="text-sm text-gray-600">
+                        <i class="fas fa-user-shield mr-2 text-purple-500"></i>
+                        관리자
+                    </span>
+                    <a href="/logout" class="text-red-500 hover:text-red-600 transition-colors">
+                        <i class="fas fa-sign-out-alt mr-1"></i>로그아웃
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 메인 컨테이너 -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- 페이지 타이틀 -->
+        <div class="mb-8 fade-in">
+            <h2 class="text-3xl font-bold text-gray-800">대시보드</h2>
+            <p class="text-gray-600 mt-2">전체 작업 현황을 한눈에 확인하세요</p>
+        </div>
+
+        <!-- 통계 카드 그리드 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- 대기중 카드 -->
+            <div class="bg-white rounded-xl shadow-lg p-6 card-hover fade-in" style="animation-delay: 0.1s;">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 gradient-yellow rounded-lg flex items-center justify-center">
+                        <i class="fas fa-clock text-white text-xl"></i>
+                    </div>
+                    <span class="text-xs font-semibold text-yellow-600 bg-yellow-50 px-2 py-1 rounded-full">
+                        PENDING
+                    </span>
+                </div>
+                <h3 class="text-gray-500 text-sm font-medium mb-1">승인 대기</h3>
+                <div class="flex items-baseline">
+                    <p class="text-3xl font-bold text-gray-800">{{ stats.pending }}</p>
+                    <span class="ml-2 text-sm text-gray-500">건</span>
+                </div>
+                <div class="mt-3">
+                    <div class="w-full bg-gray-200 rounded-full h-1">
+                        <div class="gradient-yellow h-1 rounded-full" style="width: {{ (stats.pending / stats.total * 100) if stats.total > 0 else 0 }}%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 진행중 카드 -->
+            <div class="bg-white rounded-xl shadow-lg p-6 card-hover fade-in" style="animation-delay: 0.2s;">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 gradient-blue rounded-lg flex items-center justify-center">
+                        <i class="fas fa-spinner text-white text-xl"></i>
+                    </div>
+                    <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+                        IN PROGRESS
+                    </span>
+                </div>
+                <h3 class="text-gray-500 text-sm font-medium mb-1">진행중</h3>
+                <div class="flex items-baseline">
+                    <p class="text-3xl font-bold text-gray-800">{{ stats.approved }}</p>
+                    <span class="ml-2 text-sm text-gray-500">건</span>
+                </div>
+                <div class="mt-3">
+                    <div class="w-full bg-gray-200 rounded-full h-1">
+                        <div class="gradient-blue h-1 rounded-full" style="width: {{ (stats.approved / stats.total * 100) if stats.total > 0 else 0 }}%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 완료 카드 -->
+            <div class="bg-white rounded-xl shadow-lg p-6 card-hover fade-in" style="animation-delay: 0.3s;">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 gradient-green rounded-lg flex items-center justify-center">
+                        <i class="fas fa-check-circle text-white text-xl"></i>
+                    </div>
+                    <span class="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                        COMPLETED
+                    </span>
+                </div>
+                <h3 class="text-gray-500 text-sm font-medium mb-1">완료</h3>
+                <div class="flex items-baseline">
+                    <p class="text-3xl font-bold text-gray-800">{{ stats.completed }}</p>
+                    <span class="ml-2 text-sm text-gray-500">건</span>
+                </div>
+                <div class="mt-3">
+                    <div class="w-full bg-gray-200 rounded-full h-1">
+                        <div class="gradient-green h-1 rounded-full" style="width: {{ (stats.completed / stats.total * 100) if stats.total > 0 else 0 }}%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 전체 카드 -->
+            <div class="bg-white rounded-xl shadow-lg p-6 card-hover fade-in" style="animation-delay: 0.4s;">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 gradient-purple rounded-lg flex items-center justify-center">
+                        <i class="fas fa-chart-pie text-white text-xl"></i>
+                    </div>
+                    <span class="text-xs font-semibold text-purple-600 bg-purple-50 px-2 py-1 rounded-full">
+                        TOTAL
+                    </span>
+                </div>
+                <h3 class="text-gray-500 text-sm font-medium mb-1">전체 작업</h3>
+                <div class="flex items-baseline">
+                    <p class="text-3xl font-bold text-gray-800">{{ stats.total }}</p>
+                    <span class="ml-2 text-sm text-gray-500">건</span>
+                </div>
+                <div class="mt-3">
+                    <canvas id="miniChart" width="100" height="30"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 탭 네비게이션 -->
+        <div class="bg-white rounded-t-xl shadow-lg border-b border-gray-200 px-6 pt-4">
+            <nav class="flex space-x-8">
+                <button onclick="showTab('orders')" id="ordersTab" class="tab-btn pb-3 px-1 border-b-2 border-purple-500 text-purple-600 font-medium text-sm transition-colors">
+                    <i class="fas fa-list mr-2"></i>작업 목록
+                </button>
+                <button onclick="showTab('reviews')" id="reviewsTab" class="tab-btn pb-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm transition-colors">
+                    <i class="fas fa-star mr-2"></i>리뷰 관리
+                </button>
+                <button onclick="showTab('upload')" id="uploadTab" class="tab-btn pb-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm transition-colors">
+                    <i class="fas fa-upload mr-2"></i>대량 업로드
+                </button>
+            </nav>
+        </div>
+
+        <!-- 탭 컨텐츠 -->
+        <div class="bg-white rounded-b-xl shadow-lg">
+            <!-- 작업 목록 탭 -->
+            <div id="ordersContent" class="tab-content p-6">
+                <div class="mb-4 flex justify-between items-center">
+                    <h3 class="text-lg font-semibold text-gray-800">
+                        <i class="fas fa-briefcase mr-2 text-purple-500"></i>
+                        전체 작업 현황
+                    </h3>
+                    <div class="flex space-x-2">
+                        <button onclick="downloadPendingReports()" class="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white px-4 py-2 rounded-lg hover:from-yellow-600 hover:to-yellow-700 transition-all">
+                            <i class="fas fa-clock mr-2"></i>미승인 다운로드
+                        </button>
+                        <button onclick="downloadAllReports()" class="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all">
+                            <i class="fas fa-download mr-2"></i>전체 다운로드
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 주문 테이블 -->
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead>
+                            <tr class="bg-gray-50">
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">업체정보</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">접수일</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">작업기간</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">작업량</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">진행상황</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">액션</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            {% for order in orders %}
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-4 py-4">
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900">{{ order.business_name }}</div>
+                                        <div class="text-xs text-gray-500">{{ order.representative_name }} | {{ order.order_no }}</div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-4">
+                                    <div class="text-sm text-gray-900">{{ order.receipt_date.strftime('%Y-%m-%d') if order.receipt_date else '-' }}</div>
+                                </td>
+                                <td class="px-4 py-4">
+                                    <div class="text-sm text-gray-900">
+                                        {{ order.start_date.strftime('%Y-%m-%d') if order.start_date else '-' }} ~
+                                        {{ order.end_date.strftime('%Y-%m-%d') if order.end_date else '-' }}
+                                    </div>
+                                    <div class="text-xs text-gray-500">{{ order.working_days }}일</div>
+                                </td>
+                                <td class="px-4 py-4">
+                                    <div class="text-sm text-gray-900">일일 {{ order.daily_count }}건</div>
+                                    <div class="text-xs text-gray-500">총 {{ order.total_count }}건</div>
+                                </td>
+                                <td class="px-4 py-4">
+                                    {% set progress = (order.completed_count / order.total_count * 100) if order.total_count > 0 else 0 %}
+                                    <div class="w-32">
+                                        <div class="flex justify-between text-xs mb-1">
+                                            <span class="text-gray-600">{{ order.completed_count }}/{{ order.total_count }}</span>
+                                            <span class="font-medium {% if progress >= 80 %}text-green-600{% elif progress >= 50 %}text-yellow-600{% else %}text-red-600{% endif %}">
+                                                {{ progress|round(1) }}%
+                                            </span>
+                                        </div>
+                                        <div class="w-full bg-gray-200 rounded-full h-2">
+                                            <div class="{% if progress >= 80 %}gradient-green{% elif progress >= 50 %}gradient-yellow{% else %}bg-red-500{% endif %} h-2 rounded-full transition-all duration-500"
+                                                 style="width: {{ progress }}%"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-4">
+                                    {% if order.status == 'pending' %}
+                                        <span class="status-badge px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                            <i class="fas fa-clock mr-1"></i> 대기중
+                                        </span>
+                                    {% elif order.status == 'approved' %}
+                                        <span class="status-badge px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                            <i class="fas fa-play mr-1"></i> 진행중
+                                        </span>
+                                    {% elif order.status == 'completed' %}
+                                        <span class="status-badge px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                            <i class="fas fa-check-circle mr-1"></i> 완료
+                                        </span>
+                                    {% elif order.status == 'rejected' %}
+                                        <span class="status-badge px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                            <i class="fas fa-times-circle mr-1"></i> 거부
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-4">
+                                    <div class="flex space-x-1">
+                                        {% if order.status == 'pending' %}
+                                        <button onclick="updateOrderStatus('{{ order.id }}', 'approved')"
+                                                class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs transition-colors">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                        <button onclick="updateOrderStatus('{{ order.id }}', 'rejected')"
+                                                class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs transition-colors">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                        {% endif %}
+                                        <button onclick="showOrderDetails('{{ order.id }}')"
+                                                class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs transition-colors">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button onclick="downloadOrderReport('{{ order.id }}')"
+                                                class="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded text-xs transition-colors">
+                                            <i class="fas fa-download"></i>
+                                        </button>
+                                        <button onclick="editOrder('{{ order.id }}')"
+                                                class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-xs transition-colors">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button onclick="deleteOrder('{{ order.id }}')"
+                                                class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs transition-colors">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 리뷰 관리 탭 -->
+            <div id="reviewsContent" class="tab-content hidden p-6">
+                <div class="mb-4 flex justify-between items-center">
+                    <h3 class="text-lg font-semibold text-gray-800">
+                        <i class="fas fa-star mr-2 text-yellow-500"></i>
+                        리뷰 목록
+                    </h3>
+                    <div class="flex space-x-2">
+                        <button onclick="extractAllReviews()" class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all">
+                            <i class="fas fa-magic mr-2"></i>전체 추출
+                        </button>
+                        <button onclick="downloadReviewsReport()" class="bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2 rounded-lg hover:from-green-600 hover:to-green-700 transition-all">
+                            <i class="fas fa-file-excel mr-2"></i>엑셀 다운로드
+                        </button>
+                        <button onclick="deleteAllReviews()" class="bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-2 rounded-lg hover:from-red-600 hover:to-red-700 transition-all">
+                            <i class="fas fa-trash mr-2"></i>전체 삭제
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 리뷰 테이블 -->
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead>
+                            <tr class="bg-gray-50">
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">날짜</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">업체명</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">리뷰 URL</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">리뷰 내용</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">영수증 날짜</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">액션</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            {% for review in all_reviews %}
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-4 py-3 text-sm text-gray-900">
+                                    {{ review.review_date.strftime('%Y-%m-%d %H:%M') if review.review_date else '-' }}
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="text-sm font-medium text-gray-900">{{ review.order.business_name if review.order else '미확인' }}</div>
+                                    <div class="text-xs text-gray-500">주문: {{ review.order.order_no if review.order else '-' }}</div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <a href="{{ review.review_url }}" target="_blank"
+                                       class="text-blue-600 hover:text-blue-800 text-sm hover:underline">
+                                        <i class="fas fa-external-link-alt mr-1"></i>보기
+                                    </a>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="max-w-xs truncate text-sm text-gray-600">
+                                        {{ review.content or '내용 없음' }}
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 text-sm text-gray-600">
+                                    {{ review.receipt_date_str or '-' }}
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex space-x-1">
+                                        <button onclick="extractSingleReview('{{ review.id }}')"
+                                                class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs transition-colors"
+                                                title="리뷰 내용 추출">
+                                            <i class="fas fa-sync"></i>
+                                        </button>
+                                        <button onclick="deleteReview('{{ review.id }}')"
+                                                class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs transition-colors"
+                                                title="리뷰 삭제">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 대량 업로드 탭 -->
+            <div id="uploadContent" class="tab-content hidden p-6">
+                <div class="max-w-2xl mx-auto">
+                    <div class="mb-6 text-center">
+                        <div class="w-20 h-20 gradient-purple rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-cloud-upload-alt text-white text-3xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-800 mb-2">리뷰 대량 업로드</h3>
+                        <p class="text-gray-600">CSV 파일을 업로드하여 여러 리뷰를 한번에 등록하세요</p>
+                    </div>
+
+                    <form id="bulkUploadForm" enctype="multipart/form-data" class="space-y-4">
+                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-purple-400 transition-colors">
+                            <input type="file" name="file" id="fileInput" accept=".csv,.xlsx,.xls" class="hidden" required>
+                            <label for="fileInput" class="cursor-pointer">
+                                <i class="fas fa-file-excel text-4xl text-gray-400 mb-4"></i>
+                                <p class="text-gray-600 mb-2">클릭하여 엑셀/CSV 파일 선택</p>
+                                <p class="text-xs text-gray-500">또는 파일을 여기로 드래그하세요</p>
+                            </label>
+                            <div id="fileName" class="mt-4 text-sm text-gray-700 hidden"></div>
+                            <div class="mt-6 pt-4 border-t border-gray-200">
+                                <a href="/api/admin/reviews-template"
+                                   class="inline-block bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                                    <i class="fas fa-download mr-2"></i>예시 파일 다운로드
+                                </a>
+                                <p class="text-xs text-gray-500 mt-2">리뷰 등록용 엑셀 템플릿</p>
+                            </div>
+                        </div>
+
+                        <button type="submit"
+                                class="w-full bg-gradient-to-r from-purple-500 to-purple-600 text-white py-3 rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all font-medium">
+                            <i class="fas fa-upload mr-2"></i>업로드하기
+                        </button>
+                    </form>
+
+                    <div id="uploadResult" class="mt-6 hidden">
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                            <h4 class="text-green-800 font-semibold mb-2">
+                                <i class="fas fa-check-circle mr-2"></i>업로드 완료
+                            </h4>
+                            <div id="uploadDetails" class="text-sm text-green-700"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 미니 차트 생성
+        const ctx = document.getElementById('miniChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [{{ stats.pending }}, {{ stats.approved }}, {{ stats.completed }}],
+                    backgroundColor: ['#FCD34D', '#60A5FA', '#34D399'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: false }
+                }
+            }
+        });
+
+        // 탭 전환
+        function showTab(tabName) {
+            // 모든 탭 컨텐츠 숨기기
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+
+            // 모든 탭 버튼 스타일 초기화
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('border-purple-500', 'text-purple-600');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+
+            // 선택된 탭 표시
+            document.getElementById(tabName + 'Content').classList.remove('hidden');
+            document.getElementById(tabName + 'Tab').classList.remove('border-transparent', 'text-gray-500');
+            document.getElementById(tabName + 'Tab').classList.add('border-purple-500', 'text-purple-600');
+        }
+
+        // 주문 상태 업데이트
+        function updateOrderStatus(orderId, status) {
+            if (confirm('상태를 변경하시겠습니까?')) {
+                // 상태별로 다른 API 엔드포인트 사용
+                let apiUrl = '';
+                let requestBody = {};
+
+                if (status === 'approved') {
+                    apiUrl = `/api/admin/orders/${orderId}/approve`;
+                } else if (status === 'rejected') {
+                    apiUrl = `/api/admin/orders/${orderId}/reject`;
+                    requestBody = { reason: '관리자 거부' };
+                } else {
+                    // 기타 상태 변경의 경우 기존 엔드포인트 사용
+                    apiUrl = `/api/admin/orders/${orderId}/status`;
+                    requestBody = { status: status };
+                }
+
+                fetch(apiUrl, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('상태 변경에 실패했습니다.');
+                    }
+                });
+            }
+        }
+
+        // 주문 상세 보기
+        function showOrderDetails(orderId) {
+            window.location.href = `/admin/orders/${orderId}`;
+        }
+
+        // 주문 리포트 다운로드
+        function downloadOrderReport(orderId) {
+            window.location.href = `/api/admin/orders/${orderId}/download`;
+        }
+
+        // 주문 삭제
+        function deleteOrder(orderId) {
+            if (confirm('정말로 이 주문을 삭제하시겠습니까? 관련 리뷰도 모두 삭제됩니다.')) {
+                fetch(`/api/admin/orders/${orderId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('주문이 삭제되었습니다.');
+                        location.reload();
+                    } else {
+                        alert('삭제 실패: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('삭제 중 오류가 발생했습니다.');
+                });
+            }
+        }
+
+        // 전체 리포트 다운로드
+        function downloadAllReports() {
+            window.location.href = '/api/admin/reports/download-all';
+        }
+
+        // 미승인 리포트 다운로드
+        function downloadPendingReports() {
+            window.location.href = '/api/admin/export/pending-orders';
+        }
+
+        // 전체 리뷰 추출
+        function extractAllReviews() {
+            if (confirm('모든 리뷰의 내용을 추출하시겠습니까? 시간이 걸릴 수 있습니다.')) {
+                const btn = event.target;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>추출중...';
+
+                fetch('/api/admin/reviews/extract-all', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert(data.message || `추출 완료: 성공 ${data.success_count || 0}건, 실패 ${data.fail_count || 0}건`);
+                        } else {
+                            alert('추출 실패: ' + (data.message || '알 수 없는 오류'));
+                        }
+                        location.reload();
+                    })
+                    .catch(error => {
+                        alert('추출 중 오류가 발생했습니다.');
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-magic mr-2"></i>전체 추출';
+                    });
+            }
+        }
+
+        // 개별 리뷰 삭제
+        function deleteReview(reviewId) {
+            if (confirm('이 리뷰를 삭제하시겠습니까?')) {
+                fetch(`/api/admin/reviews/${reviewId}`, {
+                    method: 'DELETE',
+                    headers: {'Content-Type': 'application/json'}
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('리뷰가 삭제되었습니다.');
+                        location.reload();
+                    } else {
+                        alert('삭제 실패: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('삭제 중 오류 발생: ' + error);
+                });
+            }
+        }
+
+        // 전체 리뷰 삭제
+        function deleteAllReviews() {
+            if (confirm('정말로 모든 리뷰를 삭제하시겠습니까?')) {
+                if (confirm('이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?')) {
+                    fetch('/api/admin/reviews/delete-all', {
+                        method: 'DELETE',
+                        headers: {'Content-Type': 'application/json'},
+                        credentials: 'same-origin'
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('서버 응답 오류: ' + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data && data.success) {
+                            alert(data.message || '전체 삭제 완료');
+                            location.reload();
+                        } else {
+                            alert('전체 삭제 실패: ' + (data && data.message ? data.message : '알 수 없는 오류'));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('삭제 오류:', error);
+                        alert('요청 중 오류 발생');
+                    });
+                }
+            }
+        }
+
+        // 단일 리뷰 추출
+        function extractSingleReview(reviewId) {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+            fetch(`/api/admin/reviews/${reviewId}/extract`, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('리뷰 내용이 추출되었습니다.');
+                        location.reload();
+                    } else {
+                        alert('추출에 실패했습니다: ' + data.message);
+                    }
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-sync"></i>';
+                });
+        }
+
+        // 리뷰 리포트 다운로드
+        function downloadReviewsReport() {
+            window.location.href = '/api/admin/reviews/download';
+        }
+
+        // 파일 업로드 처리
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const fileName = e.target.files[0]?.name;
+            if (fileName) {
+                document.getElementById('fileName').textContent = `선택된 파일: ${fileName}`;
+                document.getElementById('fileName').classList.remove('hidden');
+            }
+        });
+
+        // 대량 업로드 폼 제출
+        document.getElementById('bulkUploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>업로드 중...';
+
+            try {
+                const response = await fetch('/api/admin/upload/reviews', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || errorData.message || '업로드 실패');
+                }
+
+                const data = await response.json();
+                console.log('Upload response:', data); // 디버깅용
+
+                if (data.success) {
+                    const totalCount = data.count || 0;
+                    const successMsg = data.message || `${totalCount}개의 리뷰가 등록되었습니다`;
+
+                    document.getElementById('uploadDetails').innerHTML = `
+                        <p>${successMsg}</p>
+                        ${data.log && data.log.length > 0 ? `<div class="mt-2 text-sm text-gray-600">
+                            ${data.log.slice(0, 5).join('<br>')}
+                            ${data.log.length > 5 ? `<br>... 외 ${data.log.length - 5}건` : ''}
+                        </div>` : ''}
+                    `;
+                    document.getElementById('uploadResult').classList.remove('hidden');
+                    this.reset();
+                    document.getElementById('fileName').classList.add('hidden');
+
+                    if (totalCount > 0) {
+                        setTimeout(() => {
+                            location.reload();
+                        }, 3000);
+                    }
+                } else {
+                    alert('업로드 실패: ' + (data.message || '알 수 없는 오류'));
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+                alert('업로드 실패: ' + (error.message || '서버 오류가 발생했습니다'));
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-upload mr-2"></i>업로드하기';
+            }
+        });
+
+        // 주문 수정 함수
+        function editOrder(orderId) {
+            // 먼저 주문 정보 가져오기
+            fetch(`/api/admin/orders`)
+                .then(response => response.json())
+                .then(result => {
+                    const orders = result.data || [];
+                    // ID 비교 시 문자열로 변환하여 비교
+                    const order = orders.find(o => String(o.id) === String(orderId));
+                    if (!order) {
+                        alert('주문 정보를 찾을 수 없습니다.');
+                        console.error('Order not found:', orderId, 'Available orders:', orders.map(o => o.id));
+                        return;
+                    }
+
+                    // 모달 열기
+                    showEditModal(order);
+                })
+                .catch(error => {
+                    alert('주문 정보를 가져오는 중 오류가 발생했습니다.');
+                    console.error('Error fetching orders:', error);
+                });
+        }
+
+        function showEditModal(order) {
+            // 모달이 이미 있으면 제거
+            const existingModal = document.getElementById('editOrderModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+
+            // 새 모달 생성
+            const modalHtml = `
+                <div id="editOrderModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                        <div class="mt-3">
+                            <h3 class="text-lg font-bold text-gray-900 mb-4">주문 정보 수정</h3>
+                            <form id="editOrderForm">
+                                <input type="hidden" id="editOrderId" value="${order.id}">
+
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">상호명</label>
+                                    <input type="text" id="editBusinessName" value="${order.business_name}"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">대표자명</label>
+                                    <input type="text" id="editRepresentativeName" value="${order.representative_name}"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">플레이스 등록한 번호</label>
+                                    <input type="text" id="editPlaceNumber" value="${order.place_number || ''}"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">플레이스 링크</label>
+                                    <input type="url" id="editPlaceLink" value="${order.place_link || ''}"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">시작일</label>
+                                    <input type="date" id="editStartDate" value="${order.start_date ? order.start_date.split('T')[0] : ''}"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                           onchange="updateEditEndDate()">
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">하루 발행수</label>
+                                    <input type="number" id="editDailyCount" value="${order.daily_count}" min="1"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                           onchange="updateEditEndDate()">
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">작업 일수</label>
+                                    <input type="number" id="editWorkingDays" value="${order.working_days}" min="1"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                           onchange="updateEditEndDate()">
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">종료일 (자동 계산)</label>
+                                    <input type="date" id="editEndDate" value="${order.end_date ? order.end_date.split('T')[0] : ''}"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100" readonly>
+                                </div>
+
+                                <div class="flex justify-end space-x-2 mt-6">
+                                    <button type="button" onclick="closeEditModal()"
+                                            class="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400">
+                                        취소
+                                    </button>
+                                    <button type="submit"
+                                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                                        저장
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+            // 폼 제출 이벤트 추가
+            document.getElementById('editOrderForm').addEventListener('submit', saveOrderChanges);
+        }
+
+        function closeEditModal() {
+            const modal = document.getElementById('editOrderModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        function updateEditEndDate() {
+            const startDate = document.getElementById('editStartDate').value;
+            const workingDays = parseInt(document.getElementById('editWorkingDays').value) || 0;
+
+            if (startDate && workingDays > 0) {
+                const start = new Date(startDate);
+                const end = new Date(start);
+                end.setDate(end.getDate() + workingDays - 1);
+
+                const endDateStr = end.toISOString().split('T')[0];
+                document.getElementById('editEndDate').value = endDateStr;
+            }
+        }
+
+        async function saveOrderChanges(e) {
+            e.preventDefault();
+
+            const orderId = document.getElementById('editOrderId').value;
+            const dailyCount = parseInt(document.getElementById('editDailyCount').value);
+            const workingDays = parseInt(document.getElementById('editWorkingDays').value);
+
+            const data = {
+                business_name: document.getElementById('editBusinessName').value,
+                representative_name: document.getElementById('editRepresentativeName').value,
+                place_number: document.getElementById('editPlaceNumber').value,
+                place_link: document.getElementById('editPlaceLink').value,
+                start_date: document.getElementById('editStartDate').value,
+                end_date: document.getElementById('editEndDate').value,
+                daily_count: dailyCount,
+                working_days: workingDays,
+                total_count: dailyCount * workingDays  // total_count 추가
+            };
+
+            try {
+                const response = await fetch(`/api/admin/orders/${orderId}/edit`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('주문 정보가 수정되었습니다.');
+                    closeEditModal();
+                    location.reload();
+                } else {
+                    alert('수정 실패: ' + (result.message || '알 수 없는 오류'));
+                }
+            } catch (error) {
+                alert('수정 중 오류가 발생했습니다: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

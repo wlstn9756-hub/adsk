@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>영수증 작업 요청</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    <!-- 네비게이션 -->
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-bold text-gray-900">영수증 작업 관리 시스템</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="/receipt/dashboard" class="text-gray-700 hover:text-gray-900">내 작업 목록</a>
+                    <a href="/receipt/order" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        <i class="fas fa-plus mr-2"></i>새 작업 요청
+                    </a>
+                    <a href="/logout" class="text-red-600 hover:text-red-700">
+                        <i class="fas fa-sign-out-alt mr-1"></i>로그아웃
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 작업 요청 폼 -->
+    <div class="max-w-4xl mx-auto p-6">
+        <div class="bg-white rounded-lg shadow-lg p-8">
+            <!-- 헤더 -->
+            <div class="flex items-center mb-8">
+                <i class="fas fa-receipt text-3xl text-blue-600 mr-4"></i>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">영수증 작업 요청</h2>
+                    <p class="text-gray-600">네이버 영수증 리뷰 작업을 요청해주세요</p>
+                </div>
+            </div>
+
+            <form id="receiptOrderForm" class="space-y-6">
+                <!-- 섹션 1: 업체 정보 -->
+                <div class="border-b pb-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                        <i class="fas fa-building text-gray-600 mr-2"></i>업체 정보
+                    </h3>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- 상호명 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                상호명 <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text"
+                                   name="business_name"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                   placeholder="예: 스타벅스 강남점"
+                                   required>
+                        </div>
+
+                        <!-- 대표자명 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                대표자명 <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text"
+                                   name="representative_name"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                   placeholder="홍길동"
+                                   required>
+                        </div>
+
+                        <!-- 사업자번호 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                사업자번호 <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text"
+                                   name="business_number"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                   placeholder="123-45-67890"
+                                   pattern="[0-9]{3}-[0-9]{2}-[0-9]{5}"
+                                   required>
+                        </div>
+
+                        <!-- 업종 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                업종 <span class="text-red-500">*</span>
+                            </label>
+                            <select name="business_type"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    required>
+                                <option value="">선택하세요</option>
+                                <option value="맛집">맛집</option>
+                                <option value="일반">일반</option>
+                            </select>
+                        </div>
+
+                        <!-- 플레이스 등록한 번호 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                플레이스 등록한 번호 <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text"
+                                   name="place_number"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                   placeholder="예: 1234567890"
+                                   required>
+                        </div>
+
+                        <!-- 플레이스 링크 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                플레이스 링크 <span class="text-red-500">*</span>
+                            </label>
+                            <input type="url"
+                                   name="place_link"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                   placeholder="예: https://m.place.naver.com/place/1839653593"
+                                   required>
+                        </div>
+                    </div>
+
+                    <!-- 주소 -->
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            주소 <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text"
+                               name="business_address"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                               placeholder="서울특별시 강남구 테헤란로 123"
+                               required>
+                    </div>
+                </div>
+
+                <!-- 섹션 2: 작업 일정 -->
+                <div class="border-b pb-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                        <i class="fas fa-calendar text-gray-600 mr-2"></i>작업 일정
+                    </h3>
+
+                    <!-- 날짜 정보 알림 -->
+                    <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+                        <div class="flex">
+                            <i class="fas fa-info-circle text-blue-400 mr-2"></i>
+                            <div>
+                                <p class="text-sm text-blue-700">
+                                    • 시작일은 접수일 다음날로 자동 설정됩니다<br>
+                                    • 금요일 접수 시 월요일부터 작업이 시작됩니다<br>
+                                    • 종료일은 작업 일수에 따라 자동 계산됩니다 (주말 포함)
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- 접수일 (자동) -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">접수일</label>
+                            <input type="text"
+                                   id="receipt_date"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100"
+                                   readonly>
+                        </div>
+
+                        <!-- 시작일 (자동 계산) -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                시작일 <span class="text-sm text-gray-500">(자동 계산)</span>
+                            </label>
+                            <input type="text"
+                                   id="start_date"
+                                   name="start_date"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100"
+                                   readonly>
+                        </div>
+
+                        <!-- 하루 발행수 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                하루 발행수 <span class="text-red-500">*</span>
+                            </label>
+                            <input type="number"
+                                   id="daily_count"
+                                   name="daily_count"
+                                   min="1"
+                                   max="100"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                   onchange="updateEndDate()"
+                                   placeholder="10"
+                                   required>
+                        </div>
+
+                        <!-- 작업 일수 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                작업 일수 <span class="text-red-500">*</span>
+                            </label>
+                            <input type="number"
+                                   id="working_days"
+                                   name="working_days"
+                                   min="1"
+                                   max="30"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                   onchange="updateEndDate()"
+                                   placeholder="5"
+                                   required>
+                        </div>
+
+                        <!-- 종료일 (자동 계산) -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                종료일 <span class="text-sm text-gray-500">(자동 계산)</span>
+                            </label>
+                            <input type="text"
+                                   id="end_date"
+                                   name="end_date"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100"
+                                   readonly>
+                        </div>
+
+                        <!-- 총 작업량 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">총 작업량</label>
+                            <div class="px-4 py-2 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                                <span class="text-xl font-bold text-blue-700">
+                                    <span id="total_count">0</span>개
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 섹션 3: 가이드라인 -->
+                <div class="pb-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                        <i class="fas fa-list-check text-gray-600 mr-2"></i>작업 가이드라인
+                    </h3>
+
+                    <div class="space-y-4">
+                        <!-- 작성 가이드라인 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                작성 가이드라인 <span class="text-gray-400 text-xs">(선택사항)</span>
+                            </label>
+                            <textarea name="guidelines"
+                                      rows="4"
+                                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                      placeholder="리뷰 작성 시 지켜야 할 가이드라인을 입력하세요&#10;예: 메뉴명과 가격을 구체적으로 언급, 방문 시간대 명시"></textarea>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- 제출 버튼 -->
+                <div class="flex justify-end space-x-4 pt-6 border-t">
+                    <button type="button"
+                            onclick="window.location.href='/receipt/dashboard'"
+                            class="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                        취소
+                    </button>
+                    <button type="submit"
+                            class="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition">
+                        <i class="fas fa-paper-plane mr-2"></i>작업 요청
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // 날짜 계산 함수
+        function getNextStartDay(date) {
+            const nextDay = new Date(date);
+
+            // 금요일(5)이면 월요일로
+            if (date.getDay() === 5) {
+                nextDay.setDate(nextDay.getDate() + 3);
+            } else {
+                nextDay.setDate(nextDay.getDate() + 1);
+            }
+
+            return nextDay;
+        }
+
+        function calculateEndDate(startDate, days) {
+            // 종료일 계산 (주말 포함, 단순히 일수 더하기)
+            let date = new Date(startDate);
+            date.setDate(date.getDate() + days - 1);
+            return date;
+        }
+
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const weekDay = ['일', '월', '화', '수', '목', '금', '토'][date.getDay()];
+            return `${year}-${month}-${day} (${weekDay})`;
+        }
+
+        function updateEndDate() {
+            const workingDays = parseInt(document.getElementById('working_days').value) || 0;
+            const dailyCount = parseInt(document.getElementById('daily_count').value) || 0;
+
+            if (workingDays > 0) {
+                const startDateStr = document.getElementById('start_date').value;
+                if (startDateStr) {
+                    const startDate = new Date(startDateStr.split(' ')[0]);
+                    const endDate = calculateEndDate(startDate, workingDays);
+                    document.getElementById('end_date').value = formatDate(endDate);
+                }
+            }
+
+            // 총 작업량 계산
+            const totalCount = workingDays * dailyCount;
+            document.getElementById('total_count').textContent = totalCount || 0;
+        }
+
+        // 페이지 로드 시 초기 설정
+        window.onload = function() {
+            const today = new Date();
+            const startDate = getNextStartDay(today);
+
+            document.getElementById('receipt_date').value = formatDate(today);
+            document.getElementById('start_date').value = formatDate(startDate);
+        }
+
+        // 폼 제출
+        document.getElementById('receiptOrderForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+
+            // 날짜 정보 추가
+            data.receipt_date = document.getElementById('receipt_date').value.split(' ')[0];
+            data.start_date = document.getElementById('start_date').value.split(' ')[0];
+            data.end_date = document.getElementById('end_date').value.split(' ')[0];
+            data.total_count = parseInt(document.getElementById('total_count').textContent);
+
+            // 업종이 선택되지 않은 경우 기본값 설정
+            if (!data.business_type) {
+                data.business_type = '일반';
+            }
+
+            try {
+                const response = await fetch('/api/receipt/order', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(`작업 요청이 접수되었습니다.\n주문번호: ${result.order_no}`);
+                    window.location.href = '/receipt/dashboard';
+                } else {
+                    alert(result.message || '작업 요청에 실패했습니다');
+                }
+
+            } catch (error) {
+                alert('작업 처리 중 오류가 발생했습니다');
+                console.error(error);
+            }
+        });
+    </script>
+</body>
+</html>

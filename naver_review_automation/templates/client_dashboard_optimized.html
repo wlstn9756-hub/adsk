@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>고객사 대시보드 - 영수증 작업 관리</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+        .gradient-yellow {
+            background: linear-gradient(135deg, #FCD34D 0%, #FDE047 100%);
+        }
+        .gradient-blue {
+            background: linear-gradient(135deg, #60A5FA 0%, #3B82F6 100%);
+        }
+        .gradient-green {
+            background: linear-gradient(135deg, #34D399 0%, #10B981 100%);
+        }
+        .gradient-purple {
+            background: linear-gradient(135deg, #A78BFA 0%, #8B5CF6 100%);
+        }
+        .sidebar-item {
+            transition: all 0.2s ease;
+        }
+        .sidebar-item:hover {
+            background: linear-gradient(90deg, rgba(99, 102, 241, 0.1) 0%, transparent 100%);
+            padding-left: 1.25rem;
+        }
+        .sidebar-item.active {
+            background: linear-gradient(90deg, rgba(99, 102, 241, 0.15) 0%, transparent 100%);
+            border-left: 3px solid #6366f1;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .progress-ring {
+            transform: rotate(-90deg);
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 상단 네비게이션 -->
+    <nav class="bg-white shadow-sm border-b fixed top-0 left-0 right-0 z-50">
+        <div class="px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 gradient-blue rounded-lg flex items-center justify-center">
+                            <i class="fas fa-receipt text-white"></i>
+                        </div>
+                        <h1 class="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                            영수증 작업 관리 시스템
+                        </h1>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-gray-600">
+                        <i class="fas fa-building mr-2 text-blue-500"></i>
+                        {{ current_user.username }}
+                    </span>
+                    <a href="/logout" class="text-red-500 hover:text-red-600 transition-colors">
+                        <i class="fas fa-sign-out-alt mr-1"></i>로그아웃
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="flex pt-16">
+        <!-- 좌측 사이드바 -->
+        <aside class="w-64 bg-white shadow-lg fixed left-0 top-16 bottom-0 overflow-y-auto">
+            <div class="p-4">
+                <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">메인 메뉴</h3>
+                <nav class="space-y-1">
+                    <a href="#" data-tab="dashboard" class="sidebar-item active flex items-center px-3 py-2 text-sm font-medium text-gray-900 rounded-lg">
+                        <i class="fas fa-chart-line mr-3 text-blue-500"></i>
+                        대시보드
+                    </a>
+                    <a href="#" data-tab="orders" class="sidebar-item flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-lg">
+                        <i class="fas fa-list-alt mr-3 text-green-500"></i>
+                        작업 관리
+                    </a>
+                    <a href="#" data-tab="history" class="sidebar-item flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-lg">
+                        <i class="fas fa-history mr-3 text-purple-500"></i>
+                        작업 이력
+                    </a>
+                    <a href="#" data-tab="receipts" class="sidebar-item flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-lg">
+                        <i class="fas fa-file-invoice mr-3 text-yellow-500"></i>
+                        영수증 관리
+                    </a>
+                </nav>
+
+                <!-- 작업 요청 버튼 -->
+                <div class="mt-6 px-2">
+                    <a href="/receipt/order" class="block w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white text-center py-3 rounded-lg font-semibold hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1">
+                        <i class="fas fa-plus-circle mr-2"></i>
+                        새 작업 요청
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 메인 콘텐츠 -->
+        <main class="flex-1 ml-64 p-6">
+            <!-- 대시보드 탭 -->
+            <div id="dashboard" class="tab-content active fade-in">
+                <h2 class="text-2xl font-bold mb-6 text-gray-800">
+                    <i class="fas fa-chart-line mr-2 text-blue-500"></i>대시보드
+                </h2>
+
+                <!-- 통계 카드 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-blue-500">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm text-gray-600 mb-1">전체 작업</p>
+                                <p class="text-3xl font-bold text-gray-800">{{ total_orders }}</p>
+                            </div>
+                            <div class="w-12 h-12 gradient-blue rounded-lg flex items-center justify-center">
+                                <i class="fas fa-clipboard-list text-white"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-green-500">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm text-gray-600 mb-1">완료</p>
+                                <p class="text-3xl font-bold text-gray-800">{{ completed_orders }}</p>
+                            </div>
+                            <div class="w-12 h-12 gradient-green rounded-lg flex items-center justify-center">
+                                <i class="fas fa-check-circle text-white"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-yellow-500">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm text-gray-600 mb-1">진행중</p>
+                                <p class="text-3xl font-bold text-gray-800">{{ in_progress_orders }}</p>
+                            </div>
+                            <div class="w-12 h-12 gradient-yellow rounded-lg flex items-center justify-center">
+                                <i class="fas fa-play text-white"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-purple-500">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm text-gray-600 mb-1">대기중</p>
+                                <p class="text-3xl font-bold text-gray-800">{{ pending_orders }}</p>
+                            </div>
+                            <div class="w-12 h-12 gradient-purple rounded-lg flex items-center justify-center">
+                                <i class="fas fa-hourglass-half text-white"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 최근 작업 요약 -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-800">
+                        <i class="fas fa-clock mr-2 text-blue-500"></i>최근 작업 현황
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full">
+                            <thead>
+                                <tr class="border-b border-gray-200">
+                                    <th class="text-left py-3 px-4 text-sm font-medium text-gray-700">업체명</th>
+                                    <th class="text-left py-3 px-4 text-sm font-medium text-gray-700">접수일</th>
+                                    <th class="text-left py-3 px-4 text-sm font-medium text-gray-700">상태</th>
+                                    <th class="text-left py-3 px-4 text-sm font-medium text-gray-700">진행률</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in recent_orders[:5] %}
+                                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                                    <td class="py-3 px-4 text-sm text-gray-800">{{ order.business_name }}</td>
+                                    <td class="py-3 px-4 text-sm text-gray-600">{{ order.created_at.strftime('%Y-%m-%d') }}</td>
+                                    <td class="py-3 px-4">
+                                        {% if order.status == 'pending' %}
+                                            <span class="status-badge bg-gray-100 text-gray-700">
+                                                <i class="fas fa-hourglass-half mr-1 text-xs"></i>대기중
+                                            </span>
+                                        {% elif order.status == 'in_progress' %}
+                                            <span class="status-badge bg-yellow-100 text-yellow-700">
+                                                <i class="fas fa-play mr-1 text-xs"></i>진행중
+                                            </span>
+                                        {% elif order.status == 'completed' %}
+                                            <span class="status-badge bg-green-100 text-green-700">
+                                                <i class="fas fa-check-circle mr-1 text-xs"></i>완료
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="py-3 px-4">
+                                        <div class="w-32 bg-gray-200 rounded-full h-2">
+                                            <div class="h-2 rounded-full
+                                                {% if order.status == 'completed' %}bg-green-500{% elif order.status == 'in_progress' %}bg-yellow-500{% else %}bg-gray-400{% endif %}"
+                                                style="width: {% if order.status == 'completed' %}100%{% elif order.status == 'in_progress' %}50%{% else %}0%{% endif %}">
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 작업 관리 탭 -->
+            <div id="orders" class="tab-content fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">
+                        <i class="fas fa-list-alt mr-2 text-green-500"></i>작업 관리
+                    </h2>
+
+                    <!-- 검색 바 -->
+                    <div class="flex items-center space-x-4">
+                        <div class="relative">
+                            <input type="text" id="searchInput" placeholder="업체명 검색..."
+                                class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">업체명</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">접수일</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">영수증</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">리뷰 개수</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">작업</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                {% for order in orders %}
+                                <tr data-business="{{ order.business_name }}" class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ order.business_name }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                        {% if order.receipt_date %}
+                                            <span class="text-gray-700">{{ order.receipt_date }}</span>
+                                        {% else %}
+                                            <span class="text-gray-400">미등록</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                        <span class="font-semibold text-blue-600">{{ order.review_count }}</span>개
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        {% if order.status == 'pending' %}
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                                <i class="fas fa-hourglass-half mr-1"></i>대기중
+                                            </span>
+                                        {% elif order.status == 'in_progress' %}
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                                <i class="fas fa-play mr-1"></i>진행중
+                                            </span>
+                                        {% elif order.status == 'completed' %}
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                <i class="fas fa-check-circle mr-1"></i>완료
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                        <div class="flex space-x-2">
+                                            {% if order.status == 'completed' %}
+                                                {% if order.reviews %}
+                                                <button onclick="showReviews({{ order.id }})"
+                                                    class="text-blue-600 hover:text-blue-900 font-medium">
+                                                    <i class="fas fa-eye mr-1"></i>리뷰보기
+                                                </button>
+                                                <a href="/api/receipt/download-report/{{ order.id }}"
+                                                    class="text-green-600 hover:text-green-900 font-medium">
+                                                    <i class="fas fa-download mr-1"></i>리포트
+                                                </a>
+                                                {% endif %}
+                                            {% endif %}
+                                            <button onclick="deleteOrder({{ order.id }})"
+                                                class="text-red-600 hover:text-red-900 font-medium">
+                                                <i class="fas fa-trash mr-1"></i>삭제
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 작업 이력 탭 -->
+            <div id="history" class="tab-content fade-in">
+                <h2 class="text-2xl font-bold mb-6 text-gray-800">
+                    <i class="fas fa-history mr-2 text-purple-500"></i>작업 이력
+                </h2>
+
+                <!-- 필터 -->
+                <div class="bg-white rounded-xl shadow-sm p-4 mb-6">
+                    <div class="flex items-center space-x-4">
+                        <select class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="">전체 기간</option>
+                            <option value="7">최근 7일</option>
+                            <option value="30">최근 30일</option>
+                            <option value="90">최근 90일</option>
+                        </select>
+                        <select class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="">전체 상태</option>
+                            <option value="completed">완료</option>
+                            <option value="in_progress">진행중</option>
+                            <option value="pending">대기중</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 이력 목록 -->
+                <div class="bg-white rounded-xl shadow-sm">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">업체명</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">접수일</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">완료일</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">리뷰 개수</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">작업</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                {% for order in completed_orders %}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ order.business_name }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ order.created_at.strftime('%Y-%m-%d') }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                        {% if order.updated_at %}
+                                            {{ order.updated_at.strftime('%Y-%m-%d') }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                        <span class="font-semibold text-blue-600">{{ order.review_count }}</span>개
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                            <i class="fas fa-check-circle mr-1"></i>완료
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                        <div class="flex space-x-2">
+                                            {% if order.reviews %}
+                                            <button onclick="showReviews({{ order.id }})"
+                                                class="text-blue-600 hover:text-blue-900 font-medium">
+                                                <i class="fas fa-eye mr-1"></i>리뷰보기
+                                            </button>
+                                            <a href="/api/receipt/download-report/{{ order.id }}"
+                                                class="text-green-600 hover:text-green-900 font-medium">
+                                                <i class="fas fa-download mr-1"></i>리포트
+                                            </a>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 영수증 관리 탭 -->
+            <div id="receipts" class="tab-content fade-in">
+                <h2 class="text-2xl font-bold mb-6 text-gray-800">
+                    <i class="fas fa-file-invoice mr-2 text-yellow-500"></i>영수증 관리
+                </h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {% for order in orders %}
+                    {% if order.receipt_images %}
+                    <div class="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-lg transition-shadow">
+                        <div class="aspect-w-16 aspect-h-9 bg-gray-100">
+                            <img src="data:image/jpeg;base64,{{ order.receipt_images[0] }}" alt="영수증" class="w-full h-48 object-cover">
+                        </div>
+                        <div class="p-4">
+                            <h4 class="font-semibold text-gray-800 mb-2">{{ order.business_name }}</h4>
+                            <p class="text-sm text-gray-600 mb-1">
+                                <i class="fas fa-calendar mr-1"></i>접수일: {{ order.created_at.strftime('%Y-%m-%d') }}
+                            </p>
+                            <p class="text-sm text-gray-600 mb-3">
+                                <i class="fas fa-receipt mr-1"></i>영수증 날짜: {{ order.receipt_date or '미등록' }}
+                            </p>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm font-medium
+                                    {% if order.status == 'completed' %}text-green-600{% elif order.status == 'in_progress' %}text-yellow-600{% else %}text-gray-600{% endif %}">
+                                    {{ order.status }}
+                                </span>
+                                <button onclick="viewReceipt({{ order.id }})" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                    <i class="fas fa-expand mr-1"></i>크게보기
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 리뷰 모달 -->
+    <div id="reviewModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-lg bg-white">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold text-gray-900">리뷰 상세보기</h3>
+                <button onclick="closeReviewModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div id="reviewContent" class="max-h-96 overflow-y-auto">
+                <!-- 리뷰 내용이 여기에 표시됩니다 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 탭 전환
+        document.querySelectorAll('.sidebar-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                const tabName = this.getAttribute('data-tab');
+
+                // 모든 탭 숨기기
+                document.querySelectorAll('.tab-content').forEach(tab => {
+                    tab.classList.remove('active');
+                });
+
+                // 선택한 탭 표시
+                const selectedTab = document.getElementById(tabName);
+                if (selectedTab) {
+                    selectedTab.classList.add('active');
+                }
+
+                // 사이드바 active 상태 업데이트
+                document.querySelectorAll('.sidebar-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                this.classList.add('active');
+            });
+        });
+
+        // 검색 기능
+        document.getElementById('searchInput')?.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const rows = document.querySelectorAll('tr[data-business]');
+
+            rows.forEach(row => {
+                const businessName = row.getAttribute('data-business').toLowerCase();
+                if (businessName.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+
+        // 리뷰 보기
+        function showReviews(orderId) {
+            fetch(`/api/receipt/reviews/${orderId}`)
+                .then(response => response.json())
+                .then(data => {
+                    let html = '<div class="space-y-3">';
+                    data.reviews.forEach(review => {
+                        html += `
+                            <div class="border rounded-lg p-4 hover:bg-gray-50">
+                                <div class="flex justify-between items-start mb-2">
+                                    <span class="text-sm text-gray-600">
+                                        <i class="fas fa-calendar mr-1"></i>${review.receipt_date || '날짜 없음'}
+                                    </span>
+                                    <a href="${review.url}" target="_blank" class="text-blue-600 hover:text-blue-800 text-sm">
+                                        <i class="fas fa-external-link-alt mr-1"></i>원본 보기
+                                    </a>
+                                </div>
+                                <p class="text-gray-800">${review.content}</p>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+
+                    document.getElementById('reviewContent').innerHTML = html;
+                    document.getElementById('reviewModal').classList.remove('hidden');
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('리뷰를 불러오는 중 오류가 발생했습니다.');
+                });
+        }
+
+        // 리뷰 모달 닫기
+        function closeReviewModal() {
+            document.getElementById('reviewModal').classList.add('hidden');
+        }
+
+        // 주문 삭제
+        function deleteOrder(orderId) {
+            if (!confirm('정말로 이 주문을 삭제하시겠습니까?')) {
+                return;
+            }
+
+            fetch(`/api/client/orders/${orderId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('주문이 삭제되었습니다.');
+                    window.location.reload();
+                } else {
+                    alert('삭제 중 오류가 발생했습니다.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('삭제 중 오류가 발생했습니다.');
+            });
+        }
+
+        // 영수증 크게보기
+        function viewReceipt(orderId) {
+            // 영수증 크게보기 기능 구현
+            window.open(`/api/receipt/view/${orderId}`, '_blank');
+        }
+    </script>
+</body>
+</html>

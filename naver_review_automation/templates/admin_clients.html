@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>고객사 관리 - Sketch Review</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    <!-- 네비게이션 -->
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                        Sketch Review - Admin
+                    </h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="/admin" class="text-gray-600 hover:text-gray-800">
+                        <i class="fas fa-arrow-left mr-1"></i>대시보드
+                    </a>
+                    <a href="/logout" class="text-red-500 hover:text-red-600">
+                        <i class="fas fa-sign-out-alt mr-1"></i>로그아웃
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- 헤더 -->
+        <div class="mb-8">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">고객사 관리</h2>
+                    <p class="text-gray-600 mt-1">고객사 계정을 등록하고 관리합니다</p>
+                </div>
+                <button onclick="showAddClientModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+                    <i class="fas fa-plus mr-2"></i>새 고객사 등록
+                </button>
+            </div>
+        </div>
+
+        <!-- 고객사 목록 테이블 -->
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <table class="min-w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">회사명</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">아이디</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">담당자</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">연락처</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">등록일</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">작업 수</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">단가</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">관리</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200" id="clientsList">
+                    <!-- 동적으로 로드됨 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 고객사 등록/수정 모달 -->
+    <div id="addClientModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <h3 id="modalTitle" class="text-lg leading-6 font-medium text-gray-900 mb-4">새 고객사 등록</h3>
+                <form id="addClientForm">
+                    <input type="hidden" id="clientId" name="client_id">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">회사명</label>
+                            <input type="text" id="companyName" name="company_name" required
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">아이디</label>
+                            <input type="text" id="username" name="username" required
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">비밀번호</label>
+                            <input type="password" id="password" name="password"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <small class="text-gray-500">수정 시 비워두면 기존 비밀번호 유지</small>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">담당자명</label>
+                            <input type="text" id="contactName" name="contact_name"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">연락처</label>
+                            <input type="text" id="phone" name="phone"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">이메일</label>
+                            <input type="email" id="email" name="email"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">단가 (원) <span class="text-red-500">*</span></label>
+                            <input type="number" id="unitPrice" name="unit_price" min="1000" max="100000" step="100"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                   placeholder="단가를 입력하세요" required>
+                            <small class="text-gray-500">리뷰당 지급 단가 (필수 입력)</small>
+                        </div>
+                    </div>
+                    <div class="flex justify-end space-x-3 mt-6">
+                        <button type="button" onclick="hideAddClientModal()"
+                                class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">
+                            취소
+                        </button>
+                        <button type="submit" id="submitBtn"
+                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                            등록
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 페이지 로드 시 고객사 목록 불러오기
+        window.onload = function() {
+            loadClients();
+        }
+
+        // 고객사 목록 로드
+        async function loadClients() {
+            try {
+                const response = await fetch('/api/admin/clients');
+                const clients = await response.json();
+
+                const tbody = document.getElementById('clientsList');
+                tbody.innerHTML = '';
+
+                if (clients.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="8" class="px-6 py-4 text-center text-gray-500">
+                                등록된 고객사가 없습니다.
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                clients.forEach(client => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-gray-50';
+                    row.innerHTML = `
+                        <td class="px-6 py-4 text-sm font-medium text-gray-900">${client.company_name || '-'}</td>
+                        <td class="px-6 py-4 text-sm text-gray-900">${client.username}</td>
+                        <td class="px-6 py-4 text-sm text-gray-900">${client.full_name || '-'}</td>
+                        <td class="px-6 py-4 text-sm text-gray-900">${client.phone || '-'}</td>
+                        <td class="px-6 py-4 text-sm text-gray-500">${new Date(client.created_at).toLocaleDateString()}</td>
+                        <td class="px-6 py-4 text-sm text-gray-900">${client.order_count || 0}개</td>
+                        <td class="px-6 py-4 text-sm font-medium ${client.unit_price ? 'text-green-600' : 'text-gray-400'}">${client.unit_price ? client.unit_price.toLocaleString() + '원' : '미설정'}</td>
+                        <td class="px-6 py-4 text-center">
+                            <button onclick="editClient(${client.id})" class="text-blue-600 hover:text-blue-800 mr-3">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="deleteClient(${client.id})" class="text-red-600 hover:text-red-800">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('고객사 목록 로드 실패:', error);
+            }
+        }
+
+        // 변수 선언
+        let isEditMode = false;
+        let currentClientId = null;
+
+        // 모달 표시 (등록)
+        function showAddClientModal() {
+            isEditMode = false;
+            currentClientId = null;
+            document.getElementById('modalTitle').textContent = '새 고객사 등록';
+            document.getElementById('submitBtn').textContent = '등록';
+            document.getElementById('password').required = true;
+            document.getElementById('addClientModal').classList.remove('hidden');
+        }
+
+        // 모달 표시 (수정)
+        function showEditClientModal(clientData) {
+            isEditMode = true;
+            currentClientId = clientData.id;
+            document.getElementById('modalTitle').textContent = '고객사 정보 수정';
+            document.getElementById('submitBtn').textContent = '수정';
+            document.getElementById('password').required = false;
+
+            // 폼에 기존 데이터 채우기
+            document.getElementById('clientId').value = clientData.id;
+            document.getElementById('companyName').value = clientData.company_name;
+            document.getElementById('username').value = clientData.username;
+            document.getElementById('password').value = ''; // 비밀번호는 비워둠
+            document.getElementById('contactName').value = clientData.full_name || '';
+            document.getElementById('phone').value = clientData.phone || '';
+            document.getElementById('email').value = clientData.email || '';
+            document.getElementById('unitPrice').value = clientData.unit_price || '';
+
+            document.getElementById('addClientModal').classList.remove('hidden');
+        }
+
+        // 모달 숨기기
+        function hideAddClientModal() {
+            document.getElementById('addClientModal').classList.add('hidden');
+            document.getElementById('addClientForm').reset();
+            isEditMode = false;
+            currentClientId = null;
+        }
+
+        // 고객사 등록/수정
+        document.getElementById('addClientForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+
+            // 수정 모드일 때 비밀번호가 비어있으면 제거
+            if (isEditMode && !data.password) {
+                delete data.password;
+            }
+
+            try {
+                const url = isEditMode ? `/api/admin/clients/${currentClientId}` : '/api/admin/clients';
+                const method = isEditMode ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(isEditMode ? '고객사 정보가 수정되었습니다.' : '고객사가 등록되었습니다.');
+                    hideAddClientModal();
+                    loadClients();
+                } else {
+                    alert(result.message || (isEditMode ? '고객사 수정에 실패했습니다.' : '고객사 등록에 실패했습니다.'));
+                }
+            } catch (error) {
+                alert('오류가 발생했습니다.');
+                console.error(error);
+            }
+        });
+
+        // 고객사 삭제
+        async function deleteClient(clientId) {
+            if (!confirm('정말로 이 고객사를 삭제하시겠습니까?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/clients/${clientId}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('고객사가 삭제되었습니다.');
+                    loadClients();
+                } else {
+                    alert(result.message || '삭제에 실패했습니다.');
+                }
+            } catch (error) {
+                alert('오류가 발생했습니다.');
+                console.error(error);
+            }
+        }
+
+        // 고객사 수정
+        async function editClient(clientId) {
+            try {
+                // 먼저 고객사 정보를 가져와야 함
+                const response = await fetch('/api/admin/clients');
+                const clients = await response.json();
+
+                const client = clients.find(c => c.id === clientId);
+                if (!client) {
+                    alert('고객사 정보를 찾을 수 없습니다.');
+                    return;
+                }
+
+                // 수정 모달 표시
+                showEditClientModal(client);
+            } catch (error) {
+                console.error('고객사 정보 로드 실패:', error);
+                alert('고객사 정보를 불러오는데 실패했습니다.');
+            }
+        }
+    </script>
+</body>
+</html>

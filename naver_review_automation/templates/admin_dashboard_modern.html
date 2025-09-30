@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>관리자 대시보드 - 네이버 리뷰 관리 시스템</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+        * { font-family: 'Inter', sans-serif; }
+
+        /* 부드러운 애니메이션 */
+        * { transition: all 0.3s ease; }
+
+        /* 카드 호버 효과 */
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        /* 통계 카드 그라데이션 */
+        .gradient-pending { background: linear-gradient(135deg, #FFC107 0%, #FFD54F 100%); }
+        .gradient-progress { background: linear-gradient(135deg, #2196F3 0%, #64B5F6 100%); }
+        .gradient-completed { background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%); }
+        .gradient-total { background: linear-gradient(135deg, #9E9E9E 0%, #BDBDBD 100%); }
+
+        /* 진행률 색상 */
+        .progress-low { background-color: #EF5350; }
+        .progress-medium { background-color: #FF9800; }
+        .progress-high { background-color: #66BB6A; }
+
+        /* 스크롤바 디자인 */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        /* 테이블 스타일 */
+        .modern-table {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+        }
+
+        .modern-table thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .modern-table tbody tr {
+            border-bottom: 1px solid #f3f4f6;
+            transition: all 0.2s;
+        }
+
+        .modern-table tbody tr:hover {
+            background: #f9fafb;
+            transform: scale(1.01);
+        }
+
+        /* 탭 스타일 */
+        .tab-active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white !important;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        /* 버튼 스타일 */
+        .btn-modern {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s;
+        }
+
+        .btn-modern:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        /* 애니메이션 */
+        @keyframes slideInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-slide-up {
+            animation: slideInUp 0.5s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 상단 네비게이션 -->
+    <nav class="bg-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 flex items-center">
+                        <div class="w-10 h-10 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center">
+                            <i class="fas fa-chart-line text-white"></i>
+                        </div>
+                        <span class="ml-3 text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                            리뷰 관리 대시보드
+                        </span>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center">
+                            <i class="fas fa-user text-white text-sm"></i>
+                        </div>
+                        <span class="text-sm font-medium text-gray-700">관리자</span>
+                    </div>
+                    <button onclick="location.href='/logout'" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 메인 컨테이너 -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- 상단 통계 카드 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- 대기중 카드 -->
+            <div class="card-hover bg-white rounded-xl shadow-lg overflow-hidden">
+                <div class="gradient-pending p-1"></div>
+                <div class="p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm font-medium">대기중</p>
+                            <p class="text-3xl font-bold text-gray-900 mt-2" id="stat-pending">0</p>
+                            <p class="text-xs text-gray-500 mt-1">처리 대기</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center">
+                            <i class="fas fa-clock text-yellow-500 text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="flex items-center text-xs">
+                            <i class="fas fa-arrow-up text-yellow-500 mr-1"></i>
+                            <span class="text-yellow-500 font-medium">12%</span>
+                            <span class="text-gray-500 ml-1">from last week</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 진행중 카드 -->
+            <div class="card-hover bg-white rounded-xl shadow-lg overflow-hidden">
+                <div class="gradient-progress p-1"></div>
+                <div class="p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm font-medium">진행중</p>
+                            <p class="text-3xl font-bold text-gray-900 mt-2" id="stat-approved">0</p>
+                            <p class="text-xs text-gray-500 mt-1">작업 진행중</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                            <i class="fas fa-spinner text-blue-500 text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="flex items-center text-xs">
+                            <i class="fas fa-arrow-up text-blue-500 mr-1"></i>
+                            <span class="text-blue-500 font-medium">8%</span>
+                            <span class="text-gray-500 ml-1">from last week</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 완료 카드 -->
+            <div class="card-hover bg-white rounded-xl shadow-lg overflow-hidden">
+                <div class="gradient-completed p-1"></div>
+                <div class="p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm font-medium">완료</p>
+                            <p class="text-3xl font-bold text-gray-900 mt-2" id="stat-completed">0</p>
+                            <p class="text-xs text-gray-500 mt-1">작업 완료</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+                            <i class="fas fa-check-circle text-green-500 text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="flex items-center text-xs">
+                            <i class="fas fa-arrow-up text-green-500 mr-1"></i>
+                            <span class="text-green-500 font-medium">24%</span>
+                            <span class="text-gray-500 ml-1">from last week</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 전체 카드 -->
+            <div class="card-hover bg-white rounded-xl shadow-lg overflow-hidden">
+                <div class="gradient-total p-1"></div>
+                <div class="p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm font-medium">전체</p>
+                            <p class="text-3xl font-bold text-gray-900 mt-2" id="stat-total">0</p>
+                            <p class="text-xs text-gray-500 mt-1">총 작업</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
+                            <i class="fas fa-chart-pie text-gray-500 text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <canvas id="miniChart" width="100" height="30"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 탭 네비게이션 -->
+        <div class="bg-white rounded-xl shadow-lg p-2 mb-6">
+            <nav class="flex space-x-2">
+                <button onclick="showTab('work')" id="tab-work" class="tab-btn flex-1 px-4 py-3 rounded-lg font-medium text-gray-600 hover:bg-gray-100 tab-active">
+                    <i class="fas fa-briefcase mr-2"></i>작업 관리
+                </button>
+                <button onclick="showTab('reviews')" id="tab-reviews" class="tab-btn flex-1 px-4 py-3 rounded-lg font-medium text-gray-600 hover:bg-gray-100">
+                    <i class="fas fa-star mr-2"></i>리뷰 목록
+                </button>
+                <button onclick="showTab('bulk')" id="tab-bulk" class="tab-btn flex-1 px-4 py-3 rounded-lg font-medium text-gray-600 hover:bg-gray-100">
+                    <i class="fas fa-upload mr-2"></i>대량 업로드
+                </button>
+                <button onclick="showTab('clients')" id="tab-clients" class="tab-btn flex-1 px-4 py-3 rounded-lg font-medium text-gray-600 hover:bg-gray-100">
+                    <i class="fas fa-users mr-2"></i>고객사 관리
+                </button>
+            </nav>
+        </div>
+
+        <!-- 작업 관리 탭 -->
+        <div id="content-work" class="tab-content animate-slide-up">
+            <div class="modern-table">
+                <div class="p-6 bg-white border-b">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-gray-800">작업 주문 목록</h2>
+                        <button onclick="location.href='/api/admin/export/pending-orders'" class="btn-modern">
+                            <i class="fas fa-download mr-2"></i>미승인 작업 다운로드
+                        </button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr>
+                                <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">주문번호</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">업체명</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">고객사</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">진행률</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">상태</th>
+                                <th class="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider">액션</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orders-table" class="bg-white divide-y divide-gray-200">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 리뷰 목록 탭 -->
+        <div id="content-reviews" class="tab-content hidden animate-slide-up">
+            <div class="modern-table">
+                <div class="p-6 bg-white border-b">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-gray-800">리뷰 목록</h2>
+                        <button onclick="extractAllReviews()" class="btn-modern">
+                            <i class="fas fa-sync-alt mr-2"></i>전체 리뷰 추출
+                        </button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr>
+                                <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">업체명</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">리뷰 URL</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">내용</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">등록일</th>
+                                <th class="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider">액션</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reviews-table" class="bg-white divide-y divide-gray-200">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 대량 업로드 탭 -->
+        <div id="content-bulk" class="tab-content hidden animate-slide-up">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- 리뷰 업로드 카드 -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="mb-6">
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">리뷰 대량 업로드</h3>
+                        <p class="text-sm text-gray-500">CSV, Excel 파일로 리뷰를 일괄 등록합니다</p>
+                    </div>
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-purple-400 transition-colors">
+                        <i class="fas fa-cloud-upload-alt text-5xl text-gray-400 mb-4"></i>
+                        <input type="file" id="reviewFile" accept=".csv,.xlsx,.xls" class="hidden" onchange="uploadReviews()">
+                        <label for="reviewFile" class="btn-modern inline-block cursor-pointer mb-3">
+                            <i class="fas fa-upload mr-2"></i>파일 선택
+                        </label>
+                        <p class="text-xs text-gray-500 mb-4">CSV, XLSX, XLS 파일 지원</p>
+                        <div class="mt-4 pt-4 border-t border-gray-200">
+                            <a href="/api/admin/reviews-template" class="inline-block bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                                <i class="fas fa-download mr-2"></i>예시 파일 다운로드
+                            </a>
+                            <p class="text-xs text-gray-500 mt-2">리뷰 등록용 엑셀 템플릿</p>
+                        </div>
+                    </div>
+                    <div id="review-upload-result" class="mt-4 hidden">
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                            <p class="text-green-700 font-medium"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 업체 업로드 카드 -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="mb-6">
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">업체 대량 등록</h3>
+                        <p class="text-sm text-gray-500">Excel 파일로 업체 정보를 일괄 등록합니다</p>
+                    </div>
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-purple-400 transition-colors">
+                        <i class="fas fa-file-excel text-5xl text-gray-400 mb-4"></i>
+                        <input type="file" id="orderFile" accept=".xlsx,.xls" class="hidden" onchange="uploadOrders()">
+                        <label for="orderFile" class="btn-modern inline-block cursor-pointer">
+                            파일 선택
+                        </label>
+                        <p class="text-xs text-gray-500 mt-4">XLSX, XLS 파일 지원</p>
+                    </div>
+                    <div id="order-upload-result" class="mt-4 hidden">
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                            <p class="text-green-700 font-medium"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 고객사 관리 탭 -->
+        <div id="content-clients" class="tab-content hidden animate-slide-up">
+            <div class="modern-table">
+                <div class="p-6 bg-white border-b">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-gray-800">고객사 목록</h2>
+                        <button onclick="showAddClientModal()" class="btn-modern">
+                            <i class="fas fa-plus mr-2"></i>고객사 추가
+                        </button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr>
+                                <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">회사명</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">담당자</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">연락처</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">단가</th>
+                                <th class="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider">액션</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clients-table" class="bg-white divide-y divide-gray-200">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 탭 전환
+        function showTab(tabName) {
+            // 모든 탭 컨텐츠 숨기기
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+
+            // 모든 탭 버튼 스타일 초기화
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('tab-active');
+                btn.classList.add('text-gray-600');
+            });
+
+            // 선택된 탭 표시
+            document.getElementById(`content-${tabName}`).classList.remove('hidden');
+            document.getElementById(`tab-${tabName}`).classList.add('tab-active');
+            document.getElementById(`tab-${tabName}`).classList.remove('text-gray-600');
+
+            // 각 탭별 데이터 로드
+            if (tabName === 'work') loadOrders();
+            else if (tabName === 'reviews') loadReviews();
+            else if (tabName === 'clients') loadClients();
+        }
+
+        // 주문 목록 로드
+        function loadOrders() {
+            fetch('/api/admin/orders')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const orders = data.data;
+                        const tbody = document.getElementById('orders-table');
+                        tbody.innerHTML = '';
+
+                        // 통계 업데이트
+                        updateStatistics(orders);
+
+                        orders.forEach(order => {
+                            const progress = order.completed_count / order.total_count * 100;
+                            const progressClass = progress < 30 ? 'progress-low' :
+                                                 progress < 70 ? 'progress-medium' : 'progress-high';
+
+                            const statusBadge = {
+                                'pending': '<span class="px-3 py-1 text-xs font-bold rounded-full bg-yellow-100 text-yellow-700">대기중</span>',
+                                'approved': '<span class="px-3 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-700">진행중</span>',
+                                'completed': '<span class="px-3 py-1 text-xs font-bold rounded-full bg-green-100 text-green-700">완료</span>',
+                                'rejected': '<span class="px-3 py-1 text-xs font-bold rounded-full bg-red-100 text-red-700">거부</span>'
+                            };
+
+                            const row = `
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm font-medium text-gray-900">${order.order_no}</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">${order.business_name}</div>
+                                        <div class="text-xs text-gray-500">${order.daily_count}개/일 × ${order.working_days}일</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">${order.client_company || order.client_username}</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <div class="w-32 bg-gray-200 rounded-full h-2 mr-2">
+                                                <div class="${progressClass} h-2 rounded-full" style="width: ${progress}%"></div>
+                                            </div>
+                                            <span class="text-xs font-medium text-gray-700">${order.completed_count}/${order.total_count}</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        ${statusBadge[order.status] || order.status}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                                        ${order.status === 'pending' ? `
+                                            <button onclick="approveOrder(${order.id})" class="text-green-600 hover:text-green-900 mr-2">
+                                                <i class="fas fa-check-circle"></i>
+                                            </button>
+                                            <button onclick="rejectOrder(${order.id})" class="text-red-600 hover:text-red-900">
+                                                <i class="fas fa-times-circle"></i>
+                                            </button>
+                                        ` : `
+                                            <button onclick="viewOrderDetail(${order.id})" class="text-blue-600 hover:text-blue-900">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        `}
+                                    </td>
+                                </tr>
+                            `;
+                            tbody.innerHTML += row;
+                        });
+                    }
+                })
+                .catch(error => console.error('Error loading orders:', error));
+        }
+
+        // 리뷰 목록 로드
+        function loadReviews() {
+            fetch('/api/admin/reviews')
+                .then(response => response.json())
+                .then(data => {
+                    const tbody = document.getElementById('reviews-table');
+                    tbody.innerHTML = '';
+
+                    data.forEach(review => {
+                        const contentDisplay = review.content === '내용 추출 대기중' ?
+                            '<span class="text-orange-500"><i class="fas fa-hourglass-half mr-1"></i>대기중</span>' :
+                            `<div class="max-w-xs truncate">${review.content || '내용 없음'}</div>`;
+
+                        const row = `
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-gray-900">${review.business_name}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <a href="${review.review_url}" target="_blank" class="text-blue-600 hover:text-blue-800">
+                                        <i class="fas fa-external-link-alt text-xs mr-1"></i>
+                                        ${review.review_url.length > 30 ? review.review_url.substring(0, 30) + '...' : review.review_url}
+                                    </a>
+                                </td>
+                                <td class="px-6 py-4">
+                                    ${contentDisplay}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">${review.review_date}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                    <button onclick="extractSingleReview(${review.id})" class="text-green-600 hover:text-green-900 mr-2">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
+                                    <button onclick="deleteReview(${review.id})" class="text-red-600 hover:text-red-900">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                        tbody.innerHTML += row;
+                    });
+                })
+                .catch(error => console.error('Error loading reviews:', error));
+        }
+
+        // 고객사 목록 로드
+        function loadClients() {
+            fetch('/api/admin/clients')
+                .then(response => response.json())
+                .then(data => {
+                    const tbody = document.getElementById('clients-table');
+                    tbody.innerHTML = '';
+
+                    data.forEach(client => {
+                        const row = `
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-gray-900">${client.display_name}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">${client.username}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">${client.contact || '-'}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-gray-900">₩${client.unit_price?.toLocaleString() || '1,100'}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                    <button onclick="editClient(${client.id})" class="text-blue-600 hover:text-blue-900 mr-2">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button onclick="deleteClient(${client.id})" class="text-red-600 hover:text-red-900">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                        tbody.innerHTML += row;
+                    });
+                })
+                .catch(error => console.error('Error loading clients:', error));
+        }
+
+        // 통계 업데이트
+        function updateStatistics(orders) {
+            const stats = {
+                pending: orders.filter(o => o.status === 'pending').length,
+                approved: orders.filter(o => o.status === 'approved').length,
+                completed: orders.filter(o => o.status === 'completed').length,
+                total: orders.length
+            };
+
+            document.getElementById('stat-pending').textContent = stats.pending;
+            document.getElementById('stat-approved').textContent = stats.approved;
+            document.getElementById('stat-completed').textContent = stats.completed;
+            document.getElementById('stat-total').textContent = stats.total;
+
+            // 미니 차트 그리기
+            drawMiniChart(stats);
+        }
+
+        // 미니 차트 그리기
+        function drawMiniChart(stats) {
+            const ctx = document.getElementById('miniChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [stats.pending, stats.approved, stats.completed],
+                        backgroundColor: ['#FFC107', '#2196F3', '#4CAF50'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        // 주문 승인
+        function approveOrder(orderId) {
+            if (confirm('이 작업을 승인하시겠습니까?')) {
+                fetch(`/api/admin/orders/${orderId}/approve`, { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('작업이 승인되었습니다.');
+                            loadOrders();
+                        }
+                    });
+            }
+        }
+
+        // 전체 리뷰 추출
+        function extractAllReviews() {
+            if (confirm('모든 미추출 리뷰의 내용을 추출하시겠습니까?')) {
+                alert('추출을 시작합니다. 잠시 기다려주세요...');
+
+                fetch('/api/admin/reviews/extract-all', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert(`추출 완료!\n성공: ${data.success_count}개\n실패: ${data.fail_count}개`);
+                            loadReviews();
+                        }
+                    });
+            }
+        }
+
+        // 개별 리뷰 추출
+        function extractSingleReview(reviewId) {
+            fetch(`/api/admin/reviews/${reviewId}/extract`, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('리뷰 내용이 추출되었습니다.');
+                        loadReviews();
+                    } else {
+                        alert('추출 실패: ' + data.message);
+                    }
+                });
+        }
+
+        // 리뷰 업로드
+        function uploadReviews() {
+            const file = document.getElementById('reviewFile').files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/api/admin/upload/reviews', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => Promise.reject(err));
+                }
+                return response.json();
+            })
+            .then(data => {
+                const resultDiv = document.getElementById('review-upload-result');
+                resultDiv.classList.remove('hidden');
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                            <p class="text-green-700 font-medium">✓ ${data.count}개 리뷰 등록 완료</p>
+                        </div>
+                    `;
+                    document.getElementById('reviewFile').value = ''; // Reset file input
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                            <p class="text-red-700 font-medium">✗ 업로드 실패: ${data.message || '알 수 없는 오류'}</p>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Upload error:', error);
+                const resultDiv = document.getElementById('review-upload-result');
+                resultDiv.classList.remove('hidden');
+                resultDiv.innerHTML = `
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <p class="text-red-700 font-medium">✗ 업로드 실패: ${error.detail || error.message || '서버 오류가 발생했습니다'}</p>
+                    </div>
+                `;
+            });
+        }
+
+        // 페이지 로드시 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            loadOrders();
+        });
+    </script>
+</body>
+</html>

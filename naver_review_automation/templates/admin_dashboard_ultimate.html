@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>관리자 대시보드</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .tab-btn.active { background-color: #3b82f6; color: white; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 네비게이션 -->
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-bold text-gray-900">관리자 대시보드</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-gray-700">관리자: {{ user.username }}</span>
+                    <a href="/logout" class="text-red-600 hover:text-red-700">
+                        <i class="fas fa-sign-out-alt mr-1"></i>로그아웃
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto p-6">
+        <!-- 탭 네비게이션 -->
+        <div class="mb-8">
+            <nav class="flex space-x-2">
+                <button onclick="showTab('orders')" id="tab-orders" class="tab-btn px-4 py-2 rounded-lg font-medium text-sm bg-blue-600 text-white">
+                    <i class="fas fa-list mr-2"></i>작업 관리
+                </button>
+                <button onclick="showTab('clients')" id="tab-clients" class="tab-btn px-4 py-2 rounded-lg font-medium text-sm text-gray-600 hover:text-gray-900">
+                    <i class="fas fa-building mr-2"></i>고객사 관리
+                </button>
+                <button onclick="showTab('reviewers')" id="tab-reviewers" class="tab-btn px-4 py-2 rounded-lg font-medium text-sm text-gray-600 hover:text-gray-900">
+                    <i class="fas fa-users mr-2"></i>리뷰어 관리
+                </button>
+                <button onclick="showTab('incentive')" id="tab-incentive" class="tab-btn px-4 py-2 rounded-lg font-medium text-sm text-gray-600 hover:text-gray-900">
+                    <i class="fas fa-chart-line mr-2"></i>인센티브 관리
+                </button>
+                <button onclick="showTab('reviews')" id="tab-reviews" class="tab-btn px-4 py-2 rounded-lg font-medium text-sm text-gray-600 hover:text-gray-900">
+                    <i class="fas fa-star mr-2"></i>리뷰 목록
+                </button>
+                <button onclick="showTab('bulk')" id="tab-bulk" class="tab-btn px-4 py-2 rounded-lg font-medium text-sm text-gray-600 hover:text-gray-900">
+                    <i class="fas fa-file-excel mr-2"></i>대량 업로드
+                </button>
+            </nav>
+        </div>
+
+        <!-- 작업 관리 탭 -->
+        <div id="content-orders" class="tab-content active">
+            <div class="bg-white rounded-lg shadow">
+                <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+                    <h3 class="text-xl font-semibold text-gray-900">작업 주문 관리</h3>
+                    <button onclick="exportPendingOrders()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                        <i class="fas fa-download mr-2"></i>미승인 작업 다운로드
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">주문번호</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">업체명</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">요청자</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">시작일</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">종료일</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">일일</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">일수</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">총량</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">완료</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">진행률</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">단가</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">상태</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orders-table" class="bg-white divide-y divide-gray-200">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 고객사 관리 탭 -->
+        <div id="content-clients" class="tab-content">
+            <div class="bg-white rounded-lg shadow">
+                <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+                    <h3 class="text-xl font-semibold text-gray-900">고객사 관리</h3>
+                    <button onclick="showAddClientModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        <i class="fas fa-plus mr-2"></i>고객사 추가
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">아이디</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">회사명</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">표시명</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">단가</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">등록일</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clients-table" class="bg-white divide-y divide-gray-200">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 리뷰어 관리 탭 -->
+        <div id="content-reviewers" class="tab-content">
+            <div class="bg-white rounded-lg shadow">
+                <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+                    <h3 class="text-xl font-semibold text-gray-900">리뷰어 관리</h3>
+                    <button onclick="showAddReviewerModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        <i class="fas fa-plus mr-2"></i>리뷰어 추가
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">아이디</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">이름</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">인센티브 비율</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">상태</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">등록일</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reviewers-table" class="bg-white divide-y divide-gray-200">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 인센티브 관리 탭 -->
+        <div id="content-incentive" class="tab-content">
+            <div class="bg-white rounded-lg shadow">
+                <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+                    <div>
+                        <h3 class="text-xl font-semibold text-gray-900">인센티브 관리</h3>
+                        <p class="text-gray-600 mt-2">담당자별 인센티브를 관리하고 계산하세요</p>
+                    </div>
+                    <button onclick="showAddManagerModal()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
+                        <i class="fas fa-plus mr-2"></i>담당자 추가
+                    </button>
+                </div>
+
+                <!-- 담당자 목록 -->
+                <div class="p-6 border-b border-gray-200">
+                    <h4 class="font-semibold text-gray-900 mb-3">등록된 담당자</h4>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">이름</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">인센티브 비율</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">등록일</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">관리</th>
+                                </tr>
+                            </thead>
+                            <tbody id="managers-table" class="bg-white divide-y divide-gray-200">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 인센티브 계산 -->
+                <div class="p-6">
+                    <h4 class="font-semibold text-gray-900 mb-3">인센티브 계산</h4>
+                    <div class="flex space-x-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">담당자 선택</label>
+                            <select id="incentive-user" class="border border-gray-300 rounded-lg px-3 py-2">
+                                <option value="">담당자 선택</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">시작일</label>
+                            <input type="date" id="incentive-start" class="border border-gray-300 rounded-lg px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">종료일</label>
+                            <input type="date" id="incentive-end" class="border border-gray-300 rounded-lg px-3 py-2">
+                        </div>
+                        <div class="flex items-end">
+                            <button onclick="calculateIncentive()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                                <i class="fas fa-calculator mr-2"></i>계산
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div id="incentive-result" class="p-6">
+                    <p class="text-gray-500">담당자와 기간을 선택한 후 계산 버튼을 눌러주세요.</p>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- 리뷰 목록 탭 -->
+        <div id="content-reviews" class="tab-content">
+            <div class="bg-white rounded-lg shadow">
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="text-xl font-semibold text-gray-900">리뷰 목록 관리</h3>
+                            <p class="text-gray-600 mt-2">등록된 모든 리뷰를 확인하고 관리하세요</p>
+                        </div>
+                        <div class="space-x-2">
+                            <button onclick="extractAllReviews()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                                <i class="fas fa-sync-alt mr-2"></i>전체 리뷰 내용 추출
+                            </button>
+                            <button onclick="deleteAllReviews()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                                <i class="fas fa-trash-alt mr-2"></i>전체 리뷰 삭제
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">업체명</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">리뷰 URL</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">리뷰 내용</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">영수증 날짜</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">등록일</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reviews-table" class="bg-white divide-y divide-gray-200">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 대량 업로드 탭 -->
+        <div id="content-bulk" class="tab-content">
+            <div class="grid grid-cols-2 gap-6">
+                <!-- 고객사 대량 등록 -->
+                <div class="bg-white rounded-lg shadow">
+                    <div class="p-6 border-b border-gray-200">
+                        <h3 class="text-xl font-semibold text-gray-900">고객사 대량 등록</h3>
+                    </div>
+                    <div class="p-6">
+                        <div id="clients-upload-area" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
+                            <p class="text-gray-600 mb-4">엑셀/CSV 파일을 드래그하거나 클릭하여 업로드</p>
+                            <input type="file" id="clients-file" accept=".xlsx,.xls,.csv" class="hidden" onchange="uploadClientsExcel(this)">
+                            <label for="clients-file" class="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                                파일 선택
+                            </label>
+                            <a href="/templates/clients_template.xlsx" class="block mt-4 text-blue-600 hover:text-blue-800">
+                                <i class="fas fa-download mr-1"></i>템플릿 다운로드
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 리뷰 대량 등록 -->
+                <div class="bg-white rounded-lg shadow">
+                    <div class="p-6 border-b border-gray-200">
+                        <h3 class="text-xl font-semibold text-gray-900">리뷰 대량 등록</h3>
+                    </div>
+                    <div class="p-6">
+                        <div id="reviews-upload-area" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
+                            <p class="text-gray-600 mb-4">엑셀/CSV 파일을 드래그하거나 클릭하여 업로드</p>
+                            <input type="file" id="reviews-file" accept=".xlsx,.xls,.csv" class="hidden" onchange="uploadReviewsExcel(this)">
+                            <label for="reviews-file" class="cursor-pointer bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 inline-block mb-4">
+                                <i class="fas fa-upload mr-2"></i>파일 선택
+                            </label>
+                            <div class="mt-4">
+                                <a href="/api/admin/reviews-template" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 inline-block">
+                                    <i class="fas fa-download mr-2"></i>예시 파일 다운로드
+                                </a>
+                                <p class="text-sm text-gray-500 mt-2">리뷰 등록용 엑셀 템플릿을 다운로드하세요</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 업로드된 리뷰 목록 -->
+            <div id="uploaded-reviews" class="mt-6 bg-white rounded-lg shadow hidden">
+                <div class="p-6 border-b border-gray-200">
+                    <h3 class="text-xl font-semibold text-gray-900">업로드된 리뷰 목록</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">업체명</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">리뷰 URL</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">상태</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="uploaded-reviews-table" class="bg-white divide-y divide-gray-200">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 고객사 추가 모달 -->
+    <div id="addClientModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-semibold">고객사 추가</h3>
+                <button onclick="closeAddClientModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form onsubmit="submitAddClient(event)">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">아이디</label>
+                    <input type="text" id="clientUsername" class="w-full border border-gray-300 rounded-lg px-3 py-2" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">비밀번호</label>
+                    <input type="password" id="clientPassword" class="w-full border border-gray-300 rounded-lg px-3 py-2" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">회사명</label>
+                    <input type="text" id="clientName" class="w-full border border-gray-300 rounded-lg px-3 py-2" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">표시명</label>
+                    <input type="text" id="clientDisplayName" class="w-full border border-gray-300 rounded-lg px-3 py-2" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">단가 (원)</label>
+                    <input type="number" id="clientUnitPrice" class="w-full border border-gray-300 rounded-lg px-3 py-2" required min="0">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">담당자</label>
+                    <select id="clientManager" class="w-full border border-gray-300 rounded-lg px-3 py-2" required>
+                        <option value="">담당자 선택</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">이 고객사를 담당할 매니저를 선택하세요</p>
+                </div>
+                <div class="flex space-x-3">
+                    <button type="submit" class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700">
+                        추가
+                    </button>
+                    <button type="button" onclick="closeAddClientModal()" class="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400">
+                        취소
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 리뷰어 추가 모달 -->
+    <div id="addReviewerModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-semibold">리뷰어 추가</h3>
+                <button onclick="closeAddReviewerModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form onsubmit="submitAddReviewer(event)">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">아이디</label>
+                    <input type="text" id="reviewerUsername" class="w-full border border-gray-300 rounded-lg px-3 py-2" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">비밀번호</label>
+                    <input type="password" id="reviewerPassword" class="w-full border border-gray-300 rounded-lg px-3 py-2" required>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">이름</label>
+                    <input type="text" id="reviewerFullName" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                </div>
+                <div class="flex space-x-3">
+                    <button type="submit" class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700">
+                        추가
+                    </button>
+                    <button type="button" onclick="closeAddReviewerModal()" class="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400">
+                        취소
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 담당자 추가 모달 -->
+    <div id="addManagerModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-semibold">담당자 추가</h3>
+                <button onclick="closeAddManagerModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form onsubmit="submitAddManager(event)">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">이름</label>
+                    <input type="text" id="managerName" class="w-full border border-gray-300 rounded-lg px-3 py-2" required>
+                    <p class="text-xs text-gray-500 mt-1">로그인이 필요없는 단순 담당자 이름입니다</p>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">인센티브 비율 (%)</label>
+                    <input type="number" id="managerCommissionRate" class="w-full border border-gray-300 rounded-lg px-3 py-2" required min="0" max="100" step="0.1">
+                    <p class="text-xs text-gray-500 mt-1">예: 10% = 10 입력</p>
+                </div>
+                <div class="flex space-x-3">
+                    <button type="submit" class="flex-1 bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700">
+                        추가
+                    </button>
+                    <button type="button" onclick="closeAddManagerModal()" class="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400">
+                        취소
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 탭 관리
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active', 'bg-blue-600', 'text-white');
+                btn.classList.add('text-gray-600');
+            });
+
+            document.getElementById('content-' + tabName).classList.add('active');
+            document.getElementById('tab-' + tabName).classList.add('active', 'bg-blue-600', 'text-white');
+            document.getElementById('tab-' + tabName).classList.remove('text-gray-600');
+
+            // 탭별 데이터 로드
+            if (tabName === 'orders') loadOrders();
+            else if (tabName === 'clients') loadClients();
+            else if (tabName === 'reviewers') loadReviewers();
+            else if (tabName === 'incentive') { loadManagers(); loadIncentiveUsers(); }
+            else if (tabName === 'reviews') loadReviews();
+        }
+
+        // 데이터 로드 함수들
+        function loadOrders() {
+            fetch('/api/admin/orders')
+                .then(response => response.json())
+                .then(response => {
+                    const tbody = document.getElementById('orders-table');
+                    tbody.innerHTML = '';
+
+                    if (response.success && response.data) {
+                        response.data.forEach(order => {
+                            const progressColor = order.progress_rate >= 80 ? 'green' :
+                                                order.progress_rate >= 50 ? 'yellow' : 'red';
+
+                            const row = `
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-3 py-2 text-xs text-gray-900">${order.order_no}</td>
+                                    <td class="px-3 py-2 text-xs text-gray-900">
+                                        ${order.business_name}
+                                        <!-- 연장 기능 제거 -->
+                                    </td>
+                                    <td class="px-3 py-2 text-xs text-gray-900">${order.client_company || order.client_username}</td>
+                                    <td class="px-3 py-2 text-xs text-gray-900">${order.start_date ? order.start_date.split('T')[0] : '-'}</td>
+                                    <td class="px-3 py-2 text-xs text-gray-900">${order.end_date ? order.end_date.split('T')[0] : '-'}</td>
+                                    <td class="px-3 py-2 text-xs text-gray-900">${order.daily_count || 0}</td>
+                                    <td class="px-3 py-2 text-xs text-gray-900">${order.working_days || 0}일</td>
+                                    <td class="px-3 py-2 text-xs text-gray-900">${order.total_count || 0}</td>
+                                    <td class="px-3 py-2 text-xs text-gray-900">${order.review_count || 0}</td>
+                                    <td class="px-3 py-2 text-xs">
+                                        <div class="flex items-center">
+                                            <div class="w-12 bg-gray-200 rounded-full h-2">
+                                                <div class="bg-${progressColor}-500 h-2 rounded-full" style="width: ${order.progress_rate}%"></div>
+                                            </div>
+                                            <span class="ml-1 text-xs">${order.progress_rate}%</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-3 py-2 text-xs text-gray-900">${order.unit_price.toLocaleString()}원</td>
+                                    <td class="px-3 py-2">
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-${order.status === 'pending' ? 'yellow' : order.status === 'approved' ? 'blue' : order.status === 'completed' ? 'green' : 'red'}-100 text-${order.status === 'pending' ? 'yellow' : order.status === 'approved' ? 'blue' : order.status === 'completed' ? 'green' : 'red'}-800">
+                                            ${order.status === 'pending' ? '대기중' : order.status === 'approved' ? '진행중' : order.status === 'completed' ? '완료' : '거부됨'}
+                                        </span>
+                                    </td>
+                                    <td class="px-3 py-2 text-xs text-gray-500">
+                                        ${order.status === 'pending' ? `
+                                            <button onclick="approveOrder(${order.id})" class="text-green-600 hover:text-green-900 mr-1">승인</button>
+                                            <button onclick="rejectOrder(${order.id})" class="text-red-600 hover:text-red-900">거부</button>
+                                        ` : ''}
+                                        <!-- 연장 버튼 제거 -->
+                                    </td>
+                                </tr>
+                            `;
+                            tbody.innerHTML += row;
+                        });
+                    }
+                });
+        }
+
+        function loadClients() {
+            fetch('/api/admin/clients')
+                .then(response => response.json())
+                .then(data => {
+                    const tbody = document.getElementById('clients-table');
+                    tbody.innerHTML = '';
+                    data.forEach(client => {
+                        const row = `
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${client.username}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${client.name}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${client.display_name}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${client.unit_price.toLocaleString()}원</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${client.created_at}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <button onclick="editClient(${client.id})" class="text-blue-600 hover:text-blue-900 mr-2">수정</button>
+                                </td>
+                            </tr>
+                        `;
+                        tbody.innerHTML += row;
+                    });
+                });
+        }
+
+        function loadReviewers() {
+            fetch('/api/admin/reviewers')
+                .then(response => response.json())
+                .then(data => {
+                    const tbody = document.getElementById('reviewers-table');
+                    tbody.innerHTML = '';
+                    data.forEach(reviewer => {
+                        const row = `
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${reviewer.username}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${reviewer.full_name || '이름 없음'}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${(reviewer.commission_rate * 100).toFixed(1)}%</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${reviewer.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                        ${reviewer.is_active ? '활성' : '비활성'}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${reviewer.created_at}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <button onclick="editReviewer(${reviewer.id})" class="text-blue-600 hover:text-blue-900 mr-2">수정</button>
+                                </td>
+                            </tr>
+                        `;
+                        tbody.innerHTML += row;
+                    });
+                });
+        }
+
+        function loadManagers() {
+            fetch('/api/admin/managers')
+                .then(response => response.json())
+                .then(data => {
+                    const tbody = document.getElementById('managers-table');
+                    tbody.innerHTML = '';
+                    data.forEach(manager => {
+                        const row = `
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${manager.name}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${(manager.commission_rate * 100).toFixed(1)}%</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${manager.created_at}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <button onclick="editManager(${manager.id})" class="text-blue-600 hover:text-blue-900 mr-2">수정</button>
+                                    <button onclick="deleteManager(${manager.id})" class="text-red-600 hover:text-red-900">삭제</button>
+                                </td>
+                            </tr>
+                        `;
+                        tbody.innerHTML += row;
+                    });
+                });
+        }
+
+        function loadIncentiveUsers() {
+            fetch('/api/admin/managers')
+                .then(response => response.json())
+                .then(data => {
+                    const select = document.getElementById('incentive-user');
+                    select.innerHTML = '<option value="">담당자 선택</option>';
+                    data.forEach(user => {
+                        select.innerHTML += `<option value="${user.id}">${user.name} (${(user.commission_rate * 100).toFixed(1)}%)</option>`;
+                    });
+                });
+        }
+
+
+        function loadReviews() {
+            fetch('/api/admin/reviews')
+                .then(response => response.json())
+                .then(data => {
+                    const tbody = document.getElementById('reviews-table');
+                    tbody.innerHTML = '';
+                    data.forEach(review => {
+                        const row = `
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${review.business_name}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600">
+                                    <a href="${review.review_url}" target="_blank" class="hover:underline" title="${review.review_url}">
+                                        ${review.review_url.length > 30 ? review.review_url.substring(0, 30) + '...' : review.review_url}
+                                        <i class="fas fa-external-link-alt text-xs ml-1"></i>
+                                    </a>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-900 max-w-xs">
+                                    <div class="truncate" title="${review.content || '내용 없음'}">
+                                        ${review.content === '내용 추출 대기중' ?
+                                            '<span class="text-orange-600">내용 추출 대기중</span>' :
+                                            (review.content ? (review.content.length > 50 ? review.content.substring(0, 50) + '...' : review.content) : '내용 없음')}
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${review.receipt_date || '-'}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${review.review_date}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <button onclick="viewReviewDetail(${review.id})" class="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 mr-1">
+                                        <i class="fas fa-eye mr-1"></i>상세
+                                    </button>
+                                    <button onclick="extractSingleReview(${review.id})" class="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 mr-1">
+                                        <i class="fas fa-sync-alt mr-1"></i>재추출
+                                    </button>
+                                    <button onclick="deleteReview(${review.id})" class="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700">
+                                        <i class="fas fa-trash mr-1"></i>삭제
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                        tbody.innerHTML += row;
+                    });
+                });
+        }
+
+        // 인센티브 계산
+        function calculateIncentive() {
+            const userId = document.getElementById('incentive-user').value;
+            const startDate = document.getElementById('incentive-start').value;
+            const endDate = document.getElementById('incentive-end').value;
+
+            if (!userId || !startDate || !endDate) {
+                alert('모든 필드를 입력해주세요.');
+                return;
+            }
+
+            fetch(`/api/admin/incentive/calendar?user_id=${userId}&start_date=${startDate}&end_date=${endDate}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const result = document.getElementById('incentive-result');
+                        result.innerHTML = `
+                            <div class="grid grid-cols-3 gap-6 mb-6">
+                                <div class="bg-blue-50 p-4 rounded-lg">
+                                    <h4 class="font-semibold text-blue-900">총 매출</h4>
+                                    <p class="text-2xl font-bold text-blue-600">${data.data.summary.total_revenue.toLocaleString()}원</p>
+                                </div>
+                                <div class="bg-green-50 p-4 rounded-lg">
+                                    <h4 class="font-semibold text-green-900">총 인센티브</h4>
+                                    <p class="text-2xl font-bold text-green-600">${data.data.summary.total_incentive.toLocaleString()}원</p>
+                                </div>
+                                <div class="bg-purple-50 p-4 rounded-lg">
+                                    <h4 class="font-semibold text-purple-900">완료 주문수</h4>
+                                    <p class="text-2xl font-bold text-purple-600">${data.data.summary.total_orders}건</p>
+                                </div>
+                            </div>
+                            <div class="border-t pt-4">
+                                <h4 class="font-semibold mb-2">일별 상세 내역</h4>
+                                <div class="space-y-2">
+                                    ${Object.entries(data.data.daily_stats).map(([date, stats]) => `
+                                        <div class="flex justify-between p-2 bg-gray-50 rounded">
+                                            <span>${date}</span>
+                                            <span>작업 ${stats.count}건 / 매출 ${stats.revenue.toLocaleString()}원</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        alert('데이터 조회 실패: ' + data.message);
+                    }
+                });
+        }
+
+        // 리뷰 대량 업로드
+        function uploadReviewsExcel(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/api/admin/upload/reviews', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => Promise.reject(err));
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    alert(`업로드 성공: ${data.count}건 등록`);
+                    if (data.log) {
+                        showUploadedReviews(data.log);
+                    }
+                    input.value = ''; // Reset file input
+                } else {
+                    alert('업로드 실패: ' + (data.message || '알 수 없는 오류'));
+                }
+            })
+            .catch(error => {
+                console.error('Upload error:', error);
+                alert('업로드 실패: ' + (error.detail || error.message || '서버 오류가 발생했습니다'));
+            });
+        }
+
+        // 업로드된 리뷰 표시
+        function showUploadedReviews(logs) {
+            const container = document.getElementById('uploaded-reviews');
+            const tbody = document.getElementById('uploaded-reviews-table');
+
+            container.classList.remove('hidden');
+            tbody.innerHTML = '';
+
+            logs.forEach((log, index) => {
+                if (log.includes('✓')) {
+                    const parts = log.split(' ');
+                    const businessName = parts[1];
+                    const row = `
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${businessName}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">-</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">등록완료</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <button onclick="extractReviewContent('${businessName}')" class="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700">
+                                    리뷰 내용 추출하기
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                }
+            });
+        }
+
+        // 리뷰 내용 추출
+        function extractReviewContent(businessName) {
+            // 실제로는 URL을 입력받거나 해당 업체의 URL을 가져와야 함
+            const url = prompt(`${businessName}의 리뷰 URL을 입력하세요:`);
+            if (!url) return;
+
+            fetch('/api/admin/extract-review-content', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    review_url: url
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('리뷰 내용 추출 완료:\\n' + JSON.stringify(data.data, null, 2));
+                } else {
+                    alert('추출 실패: ' + data.message);
+                }
+            });
+        }
+
+        // 기타 함수들
+        function exportPendingOrders() {
+            fetch('/api/admin/export/pending-orders')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('다운로드 실패');
+                    }
+                    return response.blob();
+                })
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `미승인작업_${new Date().toISOString().split('T')[0]}.xlsx`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                })
+                .catch(error => {
+                    alert('미승인 작업이 없거나 다운로드 중 오류가 발생했습니다.');
+                });
+        }
+
+        function viewExtension(extId) {
+            if (confirm('연장 요청을 승인하시겠습니까?')) {
+                fetch(`/api/admin/extensions/${extId}/approve`, { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('연장이 승인되었습니다.');
+                            loadOrders();
+                        } else {
+                            alert('연장 승인 실패: ' + data.message);
+                        }
+                    });
+            }
+        }
+
+        function approveOrder(orderId) {
+            fetch(`/api/admin/orders/${orderId}/approve`, { method: 'PUT' })
+                .then(response => {
+                    if (response.ok) {
+                        loadOrders();
+                    } else {
+                        alert('승인 실패');
+                    }
+                });
+        }
+
+        function rejectOrder(orderId) {
+            fetch(`/api/admin/orders/${orderId}/reject`, { method: 'PUT' })
+                .then(response => {
+                    if (response.ok) {
+                        loadOrders();
+                    } else {
+                        alert('거부 실패');
+                    }
+                });
+        }
+
+
+        // 리뷰 관리 함수들
+        function viewReviewDetail(reviewId) {
+            fetch(`/api/admin/reviews/${reviewId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const review = data.data;
+                        alert(`리뷰 상세 정보:\n\n업체명: ${review.business_name}\n리뷰 URL: ${review.review_url}\n내용: ${review.content || '내용 없음'}\n등록일: ${review.review_date}\n작성자: ${review.author || '시스템'}`);
+                    } else {
+                        alert('리뷰 정보 조회 실패: ' + data.message);
+                    }
+                });
+        }
+
+        function deleteReview(reviewId) {
+            if (confirm('이 리뷰를 삭제하시겠습니까?')) {
+                fetch(`/api/admin/reviews/${reviewId}`, { method: 'DELETE' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('리뷰가 삭제되었습니다.');
+                            loadReviews();
+                        } else {
+                            alert('삭제 실패: ' + data.message);
+                        }
+                    });
+            }
+        }
+
+        // 전체 리뷰 내용 추출 (백그라운드)
+        function extractAllReviews() {
+            if (confirm('모든 미추출 리뷰의 내용을 추출하시겠습니까?\n백그라운드에서 실행되므로 UI는 계속 사용 가능합니다.')) {
+                fetch('/api/admin/reviews/extract-all', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert(data.message);
+                            // 30초 후 리뷰 목록 새로고침
+                            setTimeout(() => {
+                                loadReviews();
+                            }, 30000);
+                        } else {
+                            alert('추출 시작 실패: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        alert('요청 중 오류 발생: ' + error);
+                    });
+            }
+        }
+
+        // 전체 리뷰 삭제
+        function deleteAllReviews() {
+            if (confirm('모든 리뷰를 삭제하시겠습니까? 이 작업은 돌이킬 수 없습니다.')) {
+                if (confirm('정말로 모든 리뷰를 삭제하시겠습니까?')) {
+                    fetch('/api/admin/reviews/delete-all', {
+                        method: 'DELETE',
+                        headers: {'Content-Type': 'application/json'}
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert(data.message);
+                            loadReviews();
+                        } else {
+                            alert('전체 삭제 실패: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        alert('요청 중 오류 발생: ' + error);
+                    });
+                }
+            }
+        }
+
+        // 개별 리뷰 재추출
+        function extractSingleReview(reviewId) {
+            if (confirm('이 리뷰의 내용을 다시 추출하시겠습니까?')) {
+                fetch(`/api/admin/reviews/${reviewId}/extract`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('리뷰 내용이 추출되었습니다.');
+                            loadReviews();
+                        } else {
+                            alert('추출 실패: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        alert('추출 중 오류 발생: ' + error);
+                    });
+            }
+        }
+
+        // 모달 관리 함수들
+        function showAddClientModal() {
+            document.getElementById('addClientModal').classList.remove('hidden');
+            loadManagersForClientModal();
+        }
+
+        function loadManagersForClientModal() {
+            fetch('/api/admin/managers')
+                .then(response => response.json())
+                .then(data => {
+                    const select = document.getElementById('clientManager');
+                    select.innerHTML = '<option value="">담당자 선택</option>';
+                    data.forEach(manager => {
+                        select.innerHTML += `<option value="${manager.id}">${manager.name} (${(manager.commission_rate * 100).toFixed(1)}%)</option>`;
+                    });
+                });
+        }
+
+        function closeAddClientModal() {
+            document.getElementById('addClientModal').classList.add('hidden');
+            document.getElementById('clientUsername').value = '';
+            document.getElementById('clientPassword').value = '';
+            document.getElementById('clientName').value = '';
+            document.getElementById('clientDisplayName').value = '';
+            document.getElementById('clientUnitPrice').value = '';
+            document.getElementById('clientManager').value = '';
+        }
+
+        function showAddReviewerModal() {
+            document.getElementById('addReviewerModal').classList.remove('hidden');
+        }
+
+        function closeAddReviewerModal() {
+            document.getElementById('addReviewerModal').classList.add('hidden');
+            document.getElementById('reviewerUsername').value = '';
+            document.getElementById('reviewerPassword').value = '';
+            document.getElementById('reviewerFullName').value = '';
+            document.getElementById('reviewerCommissionRate').value = '';
+        }
+
+        function submitAddClient(event) {
+            event.preventDefault();
+
+            const username = document.getElementById('clientUsername').value;
+            const password = document.getElementById('clientPassword').value;
+            const name = document.getElementById('clientName').value;
+            const displayName = document.getElementById('clientDisplayName').value;
+            const unitPrice = document.getElementById('clientUnitPrice').value;
+            const managerId = document.getElementById('clientManager').value;
+
+            fetch('/api/admin/clients/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    username: username,
+                    password: password,
+                    name: name,
+                    display_name: displayName,
+                    unit_price: parseInt(unitPrice),
+                    manager_id: parseInt(managerId)
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('고객사가 추가되었습니다.');
+                    closeAddClientModal();
+                    loadClients();
+                } else {
+                    alert('추가 실패: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('추가 중 오류가 발생했습니다.');
+            });
+        }
+
+        function submitAddReviewer(event) {
+            event.preventDefault();
+
+            const username = document.getElementById('reviewerUsername').value;
+            const password = document.getElementById('reviewerPassword').value;
+            const fullName = document.getElementById('reviewerFullName').value;
+
+            fetch('/api/admin/reviewers/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    username: username,
+                    password: password,
+                    full_name: fullName,
+                    commission_rate: 0  // 리뷰어는 인센티브 없음
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('리뷰어가 추가되었습니다.');
+                    closeAddReviewerModal();
+                    loadReviewers();
+                } else {
+                    alert('추가 실패: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('추가 중 오류가 발생했습니다.');
+            });
+        }
+
+        // 담당자 모달 관리 함수들
+        function showAddManagerModal() {
+            document.getElementById('addManagerModal').classList.remove('hidden');
+        }
+
+        function closeAddManagerModal() {
+            document.getElementById('addManagerModal').classList.add('hidden');
+            document.getElementById('managerName').value = '';
+            document.getElementById('managerCommissionRate').value = '';
+        }
+
+        function submitAddManager(event) {
+            event.preventDefault();
+
+            const name = document.getElementById('managerName').value;
+            const commissionRate = document.getElementById('managerCommissionRate').value;
+
+            fetch('/api/admin/managers/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: name,
+                    commission_rate: parseFloat(commissionRate) / 100
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('담당자가 추가되었습니다.');
+                    closeAddManagerModal();
+                    loadManagers();
+                    loadIncentiveUsers();
+                } else {
+                    alert('추가 실패: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('추가 중 오류가 발생했습니다.');
+            });
+        }
+
+        // 초기 로드
+        document.addEventListener('DOMContentLoaded', function() {
+            loadOrders();
+        });
+    </script>
+</body>
+</html>

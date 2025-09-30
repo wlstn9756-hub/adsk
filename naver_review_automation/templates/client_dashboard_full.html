@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>고객사 대시보드 - 영수증 작업 관리</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .sidebar-item {
+            transition: all 0.2s ease;
+        }
+        .sidebar-item:hover {
+            background: linear-gradient(90deg, rgba(99, 102, 241, 0.1) 0%, transparent 100%);
+            padding-left: 1.25rem;
+        }
+        .sidebar-item.active {
+            background: linear-gradient(90deg, rgba(99, 102, 241, 0.15) 0%, transparent 100%);
+            border-left: 3px solid #6366f1;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .gradient-yellow { background: linear-gradient(135deg, #FCD34D 0%, #FDE047 100%); }
+        .gradient-blue { background: linear-gradient(135deg, #60A5FA 0%, #3B82F6 100%); }
+        .gradient-green { background: linear-gradient(135deg, #34D399 0%, #10B981 100%); }
+        .gradient-purple { background: linear-gradient(135deg, #A78BFA 0%, #8B5CF6 100%); }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 상단 네비게이션 -->
+    <nav class="bg-white shadow-sm border-b fixed top-0 left-0 right-0 z-50">
+        <div class="px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 gradient-blue rounded-lg flex items-center justify-center">
+                            <i class="fas fa-receipt text-white"></i>
+                        </div>
+                        <h1 class="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                            영수증 작업 관리 시스템
+                        </h1>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-gray-600">
+                        <i class="fas fa-building mr-2 text-blue-500"></i>
+                        {{ current_user.username }}
+                    </span>
+                    <a href="/logout" class="text-red-500 hover:text-red-600 transition-colors">
+                        <i class="fas fa-sign-out-alt mr-1"></i>로그아웃
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="flex pt-16">
+        <!-- 좌측 사이드바 -->
+        <aside class="w-64 bg-white shadow-lg fixed left-0 top-16 bottom-0 overflow-y-auto">
+            <div class="p-4">
+                <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">메인 메뉴</h3>
+                <nav class="space-y-1">
+                    <a href="javascript:void(0)" onclick="showTab('dashboard')" data-tab="dashboard" class="sidebar-item active flex items-center px-3 py-2 text-sm font-medium text-gray-900 rounded-lg">
+                        <i class="fas fa-chart-line mr-3 text-blue-500"></i>
+                        대시보드
+                    </a>
+                    <a href="javascript:void(0)" onclick="showTab('current')" data-tab="current" class="sidebar-item flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-lg">
+                        <i class="fas fa-list-alt mr-3 text-green-500"></i>
+                        작업 현황
+                    </a>
+                    <a href="javascript:void(0)" onclick="showTab('history')" data-tab="history" class="sidebar-item flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-lg">
+                        <i class="fas fa-history mr-3 text-purple-500"></i>
+                        작업 이력
+                    </a>
+                    <a href="javascript:void(0)" onclick="showTab('receipts')" data-tab="receipts" class="sidebar-item flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-lg">
+                        <i class="fas fa-file-invoice mr-3 text-yellow-500"></i>
+                        영수증 관리
+                    </a>
+                </nav>
+
+                <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-6 mb-3">분석 & 리포트</h3>
+                <nav class="space-y-1">
+                    <a href="javascript:void(0)" onclick="showTab('statistics')" data-tab="statistics" class="sidebar-item flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-lg">
+                        <i class="fas fa-chart-bar mr-3 text-indigo-500"></i>
+                        통계 분석
+                    </a>
+                    <a href="javascript:void(0)" onclick="showTab('reports')" data-tab="reports" class="sidebar-item flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-lg">
+                        <i class="fas fa-file-pdf mr-3 text-red-500"></i>
+                        리포트
+                    </a>
+                </nav>
+
+                <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-6 mb-3">설정</h3>
+                <nav class="space-y-1">
+                    <a href="javascript:void(0)" onclick="showTab('settings')" data-tab="settings" class="sidebar-item flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-lg">
+                        <i class="fas fa-cog mr-3 text-gray-500"></i>
+                        설정
+                    </a>
+                </nav>
+            </div>
+
+            <!-- 빠른 작업 버튼 -->
+            <div class="p-4 border-t">
+                <a href="/receipt/order" class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-3 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all flex items-center justify-center">
+                    <i class="fas fa-plus mr-2"></i>새 작업 요청
+                </a>
+            </div>
+        </aside>
+
+        <!-- 메인 컨텐츠 영역 -->
+        <main class="ml-64 flex-1 p-6">
+            <!-- 대시보드 탭 -->
+            <div id="dashboard-tab" class="tab-content active">
+                <!-- 검색 바 -->
+                <div class="mb-6 bg-white rounded-lg shadow-sm p-4">
+                    <div class="flex items-center space-x-4">
+                        <div class="flex-1 relative">
+                            <input type="text" id="searchInput" placeholder="업체명으로 검색..."
+                                   class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                   onkeyup="searchOrders()">
+                            <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                        </div>
+                        <select id="statusFilter" onchange="filterByStatus()" class="px-4 py-2 border border-gray-300 rounded-lg">
+                            <option value="">전체 상태</option>
+                            <option value="pending">대기중</option>
+                            <option value="approved">진행중</option>
+                            <option value="completed">완료</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 통계 카드 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                    <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-yellow-400">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">대기중</p>
+                                <p class="text-3xl font-bold text-gray-900 mt-1">{{ stats.pending }}</p>
+                            </div>
+                            <div class="w-12 h-12 gradient-yellow rounded-lg flex items-center justify-center">
+                                <i class="fas fa-clock text-white text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-blue-400">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">진행중</p>
+                                <p class="text-3xl font-bold text-gray-900 mt-1">{{ stats.approved }}</p>
+                            </div>
+                            <div class="w-12 h-12 gradient-blue rounded-lg flex items-center justify-center">
+                                <i class="fas fa-play-circle text-white text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-green-400">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">완료</p>
+                                <p class="text-3xl font-bold text-gray-900 mt-1">{{ stats.completed }}</p>
+                            </div>
+                            <div class="w-12 h-12 gradient-green rounded-lg flex items-center justify-center">
+                                <i class="fas fa-check-circle text-white text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-purple-400">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">전체 작업</p>
+                                <p class="text-3xl font-bold text-gray-900 mt-1">{{ stats.total }}</p>
+                            </div>
+                            <div class="w-12 h-12 gradient-purple rounded-lg flex items-center justify-center">
+                                <i class="fas fa-list-alt text-white text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 최근 활동 -->
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                        <i class="fas fa-clock mr-2 text-blue-500"></i>최근 활동
+                    </h3>
+                    <div class="space-y-3">
+                        {% for order in orders[:5] %}
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div class="flex items-center">
+                                <div class="w-2 h-2 {% if order.status == 'completed' %}bg-green-500{% elif order.status == 'approved' %}bg-blue-500{% else %}bg-yellow-500{% endif %} rounded-full mr-3"></div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">{{ order.business_name }}</p>
+                                    <p class="text-xs text-gray-500">{{ order.receipt_date.strftime('%Y-%m-%d') if order.receipt_date else '-' }}</p>
+                                </div>
+                            </div>
+                            <span class="text-sm text-gray-600">{{ order.completed_count }}/{{ order.total_count }}건</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 작업 현황 탭 (진행중인 작업만) -->
+            <div id="current-tab" class="tab-content">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">진행중인 작업</h2>
+                <div class="bg-white rounded-lg shadow-sm">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">업체명</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">시작일</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">종료일</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">진행률</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">남은 일수</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">관리</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                                {% for order in orders if order.status == 'approved' %}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-4 py-3">
+                                        <div class="text-sm font-medium text-gray-900">{{ order.business_name }}</div>
+                                        <div class="text-xs text-gray-500">{{ order.order_no }}</div>
+                                    </td>
+                                    <td class="px-4 py-3 text-sm text-gray-900">{{ order.start_date.strftime('%Y-%m-%d') if order.start_date else '-' }}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-900">{{ order.end_date.strftime('%Y-%m-%d') if order.end_date else '-' }}</td>
+                                    <td class="px-4 py-3">
+                                        {% set progress = (order.completed_count / order.total_count * 100) if order.total_count > 0 else 0 %}
+                                        <div class="w-32">
+                                            <div class="flex justify-between text-xs mb-1">
+                                                <span>{{ order.completed_count }}/{{ order.total_count }}</span>
+                                                <span>{{ progress|round(1) }}%</span>
+                                            </div>
+                                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                                <div class="bg-blue-500 h-2 rounded-full" style="width: {{ progress }}%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        {% if order.end_date %}
+                                            {% set days_left = (order.end_date - order.receipt_date).days %}
+                                            <span class="text-sm {% if days_left < 3 %}text-red-600 font-bold{% else %}text-gray-900{% endif %}">
+                                                {{ days_left }}일
+                                            </span>
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <button onclick="toggleReviews('{{ order.id }}')" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs">
+                                            <i class="fas fa-eye"></i> 상세
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 작업 이력 탭 (완료된 작업) -->
+            <div id="history-tab" class="tab-content">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">작업 이력</h2>
+                <div class="bg-white rounded-lg shadow-sm">
+                    <div class="p-4 border-b">
+                        <div class="flex items-center space-x-4">
+                            <input type="month" class="px-3 py-2 border border-gray-300 rounded-lg" onchange="filterByMonth(this.value)">
+                            <button onclick="downloadMonthlyReport()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">
+                                <i class="fas fa-download mr-2"></i>월별 리포트
+                            </button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">완료일</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">업체명</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">작업량</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">금액</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">리포트</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                                {% for order in orders if order.status == 'completed' %}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-4 py-3 text-sm text-gray-900">{{ order.end_date.strftime('%Y-%m-%d') if order.end_date else '-' }}</td>
+                                    <td class="px-4 py-3">
+                                        <div class="text-sm font-medium text-gray-900">{{ order.business_name }}</div>
+                                        <div class="text-xs text-gray-500">{{ order.order_no }}</div>
+                                    </td>
+                                    <td class="px-4 py-3 text-sm text-gray-900">{{ order.total_count }}건</td>
+                                    <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ "{:,}".format(order.total_price) }}원</td>
+                                    <td class="px-4 py-3">
+                                        <button onclick="downloadOrderReport('{{ order.id }}')" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs">
+                                            <i class="fas fa-download"></i> 다운로드
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 영수증 관리 탭 -->
+            <div id="receipts-tab" class="tab-content">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">영수증 관리</h2>
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="mb-4">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-gray-700">업로드된 영수증</h3>
+                            <button class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm">
+                                <i class="fas fa-upload mr-2"></i>영수증 업로드
+                            </button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {% for order in orders[:9] %}
+                        <div class="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                            <div class="aspect-w-16 aspect-h-9 bg-gray-100 rounded mb-3 flex items-center justify-center">
+                                <i class="fas fa-receipt text-4xl text-gray-400"></i>
+                            </div>
+                            <p class="text-sm font-medium text-gray-900">{{ order.business_name }}</p>
+                            <p class="text-xs text-gray-500">{{ order.receipt_date.strftime('%Y-%m-%d') if order.receipt_date else '-' }}</p>
+                            <div class="mt-2 flex space-x-2">
+                                <button class="text-blue-600 hover:text-blue-800 text-xs">
+                                    <i class="fas fa-eye"></i> 보기
+                                </button>
+                                <button class="text-green-600 hover:text-green-800 text-xs">
+                                    <i class="fas fa-download"></i> 다운로드
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 통계 분석 탭 -->
+            <div id="statistics-tab" class="tab-content">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">통계 분석</h2>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <!-- 월별 작업량 차트 -->
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-4">월별 작업량</h3>
+                        <canvas id="monthlyChart" width="400" height="200"></canvas>
+                    </div>
+
+                    <!-- 업체별 분포 차트 -->
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-4">업체별 분포</h3>
+                        <canvas id="businessChart" width="400" height="200"></canvas>
+                    </div>
+                </div>
+
+                <!-- 통계 요약 -->
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-4">이번 달 통계</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div class="bg-blue-50 rounded-lg p-4">
+                            <p class="text-sm text-gray-600">총 작업 건수</p>
+                            <p class="text-2xl font-bold text-blue-600">{{ stats.total * 10 }}</p>
+                            <p class="text-xs text-gray-500 mt-1">전월 대비 +15%</p>
+                        </div>
+                        <div class="bg-green-50 rounded-lg p-4">
+                            <p class="text-sm text-gray-600">완료율</p>
+                            <p class="text-2xl font-bold text-green-600">92%</p>
+                            <p class="text-xs text-gray-500 mt-1">목표 대비 +2%</p>
+                        </div>
+                        <div class="bg-yellow-50 rounded-lg p-4">
+                            <p class="text-sm text-gray-600">평균 처리 시간</p>
+                            <p class="text-2xl font-bold text-yellow-600">2.3일</p>
+                            <p class="text-xs text-gray-500 mt-1">전월 대비 -0.5일</p>
+                        </div>
+                        <div class="bg-purple-50 rounded-lg p-4">
+                            <p class="text-sm text-gray-600">총 매출</p>
+                            <p class="text-2xl font-bold text-purple-600">3,500만원</p>
+                            <p class="text-xs text-gray-500 mt-1">전월 대비 +20%</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 리포트 탭 -->
+            <div id="reports-tab" class="tab-content">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">리포트</h2>
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- 리포트 생성 -->
+                        <div class="border rounded-lg p-6">
+                            <h3 class="text-lg font-semibold text-gray-700 mb-4">
+                                <i class="fas fa-file-export mr-2 text-blue-500"></i>리포트 생성
+                            </h3>
+                            <form class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">기간 선택</label>
+                                    <div class="flex space-x-2">
+                                        <input type="date" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg">
+                                        <span class="self-center">~</span>
+                                        <input type="date" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">리포트 유형</label>
+                                    <select class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                        <option>전체 요약</option>
+                                        <option>업체별 상세</option>
+                                        <option>월별 통계</option>
+                                        <option>재무 보고서</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg">
+                                    <i class="fas fa-file-pdf mr-2"></i>PDF 생성
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- 최근 리포트 -->
+                        <div class="border rounded-lg p-6">
+                            <h3 class="text-lg font-semibold text-gray-700 mb-4">
+                                <i class="fas fa-history mr-2 text-green-500"></i>최근 리포트
+                            </h3>
+                            <div class="space-y-3">
+                                <div class="flex items-center justify-between p-3 bg-gray-50 rounded">
+                                    <div>
+                                        <p class="text-sm font-medium">2024년 1월 월간 보고서</p>
+                                        <p class="text-xs text-gray-500">2024-02-01 생성</p>
+                                    </div>
+                                    <button class="text-blue-600 hover:text-blue-800">
+                                        <i class="fas fa-download"></i>
+                                    </button>
+                                </div>
+                                <div class="flex items-center justify-between p-3 bg-gray-50 rounded">
+                                    <div>
+                                        <p class="text-sm font-medium">2023년 4분기 보고서</p>
+                                        <p class="text-xs text-gray-500">2024-01-15 생성</p>
+                                    </div>
+                                    <button class="text-blue-600 hover:text-blue-800">
+                                        <i class="fas fa-download"></i>
+                                    </button>
+                                </div>
+                                <div class="flex items-center justify-between p-3 bg-gray-50 rounded">
+                                    <div>
+                                        <p class="text-sm font-medium">2023년 연간 보고서</p>
+                                        <p class="text-xs text-gray-500">2024-01-05 생성</p>
+                                    </div>
+                                    <button class="text-blue-600 hover:text-blue-800">
+                                        <i class="fas fa-download"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 설정 탭 -->
+            <div id="settings-tab" class="tab-content">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">설정</h2>
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="max-w-2xl">
+                        <!-- 계정 정보 -->
+                        <div class="mb-8">
+                            <h3 class="text-lg font-semibold text-gray-700 mb-4">
+                                <i class="fas fa-user mr-2 text-blue-500"></i>계정 정보
+                            </h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">사용자명</label>
+                                    <input type="text" value="{{ current_user.username }}" disabled class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">이메일</label>
+                                    <input type="email" placeholder="example@company.com" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">연락처</label>
+                                    <input type="tel" placeholder="010-0000-0000" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 비밀번호 변경 -->
+                        <div class="mb-8">
+                            <h3 class="text-lg font-semibold text-gray-700 mb-4">
+                                <i class="fas fa-lock mr-2 text-yellow-500"></i>비밀번호 변경
+                            </h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">현재 비밀번호</label>
+                                    <input type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">새 비밀번호</label>
+                                    <input type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">새 비밀번호 확인</label>
+                                    <input type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 알림 설정 -->
+                        <div class="mb-8">
+                            <h3 class="text-lg font-semibold text-gray-700 mb-4">
+                                <i class="fas fa-bell mr-2 text-purple-500"></i>알림 설정
+                            </h3>
+                            <div class="space-y-3">
+                                <label class="flex items-center">
+                                    <input type="checkbox" checked class="mr-3">
+                                    <span class="text-sm text-gray-700">작업 승인 알림</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" checked class="mr-3">
+                                    <span class="text-sm text-gray-700">작업 완료 알림</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" class="mr-3">
+                                    <span class="text-sm text-gray-700">월간 리포트 알림</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <button class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg">
+                            <i class="fas fa-save mr-2"></i>설정 저장
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // 탭 전환
+        function showTab(tabName) {
+            // 모든 탭 숨기기
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // 모든 사이드바 아이템 비활성화
+            document.querySelectorAll('.sidebar-item').forEach(item => {
+                item.classList.remove('active');
+            });
+
+            // 선택된 탭 보이기
+            document.getElementById(tabName + '-tab').classList.add('active');
+
+            // 선택된 사이드바 아이템 활성화
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+        }
+
+        // 검색 기능
+        function searchOrders() {
+            const searchValue = document.getElementById('searchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('.order-row');
+            rows.forEach(row => {
+                const businessName = row.dataset.businessName.toLowerCase();
+                row.style.display = businessName.includes(searchValue) ? '' : 'none';
+            });
+        }
+
+        // 리뷰 토글
+        function toggleReviews(orderId) {
+            const reviewsRow = document.getElementById('reviews-' + orderId);
+            if (reviewsRow) reviewsRow.classList.toggle('hidden');
+        }
+
+        // 다운로드 함수들
+        function downloadOrderReport(orderId) {
+            window.location.href = '/api/client/report/download/' + orderId;
+        }
+
+        function downloadMonthlyReport() {
+            alert('월별 리포트를 다운로드합니다.');
+        }
+
+        // 차트 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            // 월별 작업량 차트
+            const monthlyCtx = document.getElementById('monthlyChart');
+            if (monthlyCtx) {
+                new Chart(monthlyCtx.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: ['1월', '2월', '3월', '4월', '5월', '6월'],
+                        datasets: [{
+                            label: '작업량',
+                            data: [120, 150, 180, 140, 200, 250],
+                            borderColor: 'rgb(59, 130, 246)',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            tension: 0.3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        }
+                    }
+                });
+            }
+
+            // 업체별 분포 차트
+            const businessCtx = document.getElementById('businessChart');
+            if (businessCtx) {
+                new Chart(businessCtx.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['카페', '음식점', '병원', '미용실', '기타'],
+                        datasets: [{
+                            data: [30, 25, 20, 15, 10],
+                            backgroundColor: [
+                                'rgb(251, 191, 36)',
+                                'rgb(59, 130, 246)',
+                                'rgb(34, 197, 94)',
+                                'rgb(167, 139, 250)',
+                                'rgb(156, 163, 175)'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

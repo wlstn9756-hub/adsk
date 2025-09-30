@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>내 작업 목록 - 영수증 작업 관리</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    <!-- 네비게이션 -->
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-bold text-gray-900">영수증 작업 관리 시스템</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="/receipt/dashboard" class="text-gray-900 font-medium">내 작업 목록</a>
+                    <a href="/receipt/order" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        <i class="fas fa-plus mr-2"></i>새 작업 요청
+                    </a>
+                    <a href="/logout" class="text-red-600 hover:text-red-700">
+                        <i class="fas fa-sign-out-alt mr-1"></i>로그아웃
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 대시보드 -->
+    <div class="max-w-7xl mx-auto p-6">
+        <!-- 헤더 -->
+        <div class="mb-8">
+            <h2 class="text-3xl font-bold text-gray-900">내 작업 목록</h2>
+            <p class="text-gray-600 mt-2">요청한 영수증 작업 현황을 확인하세요</p>
+        </div>
+
+        <!-- 통계 카드 -->
+        <div class="grid grid-cols-4 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 bg-blue-100 rounded-lg p-3">
+                        <i class="fas fa-clock text-blue-600 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm text-gray-600">대기중</p>
+                        <p class="text-2xl font-bold text-gray-900" id="pending-count">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 bg-green-100 rounded-lg p-3">
+                        <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm text-gray-600">승인됨</p>
+                        <p class="text-2xl font-bold text-gray-900" id="approved-count">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 bg-yellow-100 rounded-lg p-3">
+                        <i class="fas fa-spinner text-yellow-600 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm text-gray-600">진행중</p>
+                        <p class="text-2xl font-bold text-gray-900" id="progress-count">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 bg-purple-100 rounded-lg p-3">
+                        <i class="fas fa-flag-checkered text-purple-600 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm text-gray-600">완료</p>
+                        <p class="text-2xl font-bold text-gray-900" id="completed-count">0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 작업 목록 테이블 -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">작업 요청 목록</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50 border-b">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">주문번호</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">업체명</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">작업기간</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">진행률</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">등록일</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">작업</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orders-tbody" class="bg-white divide-y divide-gray-200">
+                        <!-- 데이터가 여기에 추가됩니다 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 리뷰 등록 모달 -->
+    <div id="reviewModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-96">
+            <h3 class="text-lg font-semibold mb-4">리뷰 URL 등록</h3>
+            <input type="hidden" id="currentOrderId">
+            <input type="text" id="reviewUrl"
+                   class="w-full p-3 border rounded-lg mb-3"
+                   placeholder="네이버 리뷰 URL을 입력하세요">
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeReviewModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800">취소</button>
+                <button onclick="submitReview()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">등록</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 리뷰 목록 모달 -->
+    <div id="reviewListModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[80vh] overflow-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">등록된 리뷰 목록</h3>
+                <button onclick="closeReviewListModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div id="reviewListContent">
+                <!-- 리뷰 목록이 여기에 표시됩니다 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 주문 목록 로드
+        async function loadOrders() {
+            try {
+                const response = await fetch('/api/company/orders');
+                const result = await response.json();
+
+                if (result.success) {
+                    displayOrders(result.data);
+                    updateStatistics(result.data);
+                }
+            } catch (error) {
+                console.error('Failed to load orders:', error);
+            }
+        }
+
+        // 주문 목록 표시
+        function displayOrders(orders) {
+            const tbody = document.getElementById('orders-tbody');
+
+            if (orders.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="px-6 py-12 text-center text-gray-500">
+                            <i class="fas fa-inbox text-4xl text-gray-300 mb-4"></i>
+                            <p>아직 작업 요청이 없습니다</p>
+                            <a href="/receipt/order" class="mt-4 inline-block text-blue-600 hover:text-blue-700">
+                                첫 작업 요청하기 →
+                            </a>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = orders.map(order => {
+                const statusBadge = getStatusBadge(order.status);
+                const progressBar = `
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div class="bg-blue-600 h-2 rounded-full" style="width: ${order.progress_rate}%"></div>
+                    </div>
+                    <span class="text-xs text-gray-600 mt-1">${order.completed_count}/${order.total_count} (${order.progress_rate}%)</span>
+                `;
+
+                let actionButtons = '';
+                if (order.status === 'approved' || order.status === 'in_progress') {
+                    actionButtons = `
+                        <button onclick="showReviewModal(${order.id})"
+                                class="text-blue-600 hover:text-blue-800 mr-2"
+                                title="리뷰 등록">
+                            <i class="fas fa-plus-circle"></i>
+                        </button>
+                        <button onclick="viewReviews(${order.id})"
+                                class="text-green-600 hover:text-green-800 mr-2"
+                                title="리뷰 보기">
+                            <i class="fas fa-list"></i>
+                        </button>
+                        <button onclick="downloadReport(${order.id})"
+                                class="text-purple-600 hover:text-purple-800"
+                                title="리포트 다운로드">
+                            <i class="fas fa-download"></i>
+                        </button>
+                    `;
+                }
+
+                return `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            ${order.order_no}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${order.business_name}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${formatDate(order.start_date)} ~ ${formatDate(order.end_date)}
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="w-32">
+                                ${progressBar}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            ${statusBadge}
+                            ${order.rejection_reason ? `
+                                <div class="mt-1 text-xs text-red-600">
+                                    <i class="fas fa-info-circle"></i> ${order.rejection_reason}
+                                </div>
+                            ` : ''}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${formatDate(order.created_at)}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            ${actionButtons}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // 리뷰 모달 표시
+        function showReviewModal(orderId) {
+            document.getElementById('currentOrderId').value = orderId;
+            document.getElementById('reviewUrl').value = '';
+            document.getElementById('reviewModal').classList.remove('hidden');
+        }
+
+        // 리뷰 모달 닫기
+        function closeReviewModal() {
+            document.getElementById('reviewModal').classList.add('hidden');
+        }
+
+        // 리뷰 제출
+        async function submitReview() {
+            const orderId = document.getElementById('currentOrderId').value;
+            const reviewUrl = document.getElementById('reviewUrl').value;
+
+            if (!reviewUrl) {
+                alert('리뷰 URL을 입력해주세요');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/reviews/register', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        order_id: orderId,
+                        review_url: reviewUrl
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('리뷰가 등록되었습니다');
+                    closeReviewModal();
+                    loadOrders();
+                } else {
+                    alert(result.message || '리뷰 등록에 실패했습니다');
+                }
+            } catch (error) {
+                alert('리뷰 등록 중 오류가 발생했습니다');
+            }
+        }
+
+        // 리뷰 목록 보기
+        async function viewReviews(orderId) {
+            try {
+                const response = await fetch(`/api/reviews/${orderId}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    displayReviews(result.data);
+                    document.getElementById('reviewListModal').classList.remove('hidden');
+                }
+            } catch (error) {
+                alert('리뷰 목록을 불러오는데 실패했습니다');
+            }
+        }
+
+        // 리뷰 목록 표시
+        function displayReviews(reviews) {
+            const content = document.getElementById('reviewListContent');
+
+            if (reviews.length === 0) {
+                content.innerHTML = `
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-clipboard-list text-4xl mb-4"></i>
+                        <p>등록된 리뷰가 없습니다</p>
+                    </div>
+                `;
+                return;
+            }
+
+            content.innerHTML = `
+                <div class="space-y-4">
+                    ${reviews.map(review => `
+                        <div class="border rounded-lg p-4 hover:bg-gray-50">
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <span class="text-sm text-gray-600">작성일: ${formatDate(review.review_date)}</span>
+                                    <div class="flex items-center mt-1">
+                                        ${[...Array(5)].map((_, i) =>
+                                            `<i class="fas fa-star ${i < review.rating ? 'text-yellow-400' : 'text-gray-300'} text-sm"></i>`
+                                        ).join('')}
+                                        <span class="ml-2 text-sm text-gray-600">${review.rating}/5</span>
+                                    </div>
+                                </div>
+                                <a href="${review.review_url}" target="_blank"
+                                   class="text-blue-600 hover:text-blue-800 text-sm">
+                                    <i class="fas fa-external-link-alt"></i> 원본 보기
+                                </a>
+                            </div>
+                            <p class="text-gray-800 mb-2">${review.content}</p>
+                            ${review.menu_items && review.menu_items.length > 0 ? `
+                                <div class="text-sm text-gray-600">
+                                    <i class="fas fa-utensils mr-1"></i>
+                                    ${review.menu_items.join(', ')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // 리뷰 목록 모달 닫기
+        function closeReviewListModal() {
+            document.getElementById('reviewListModal').classList.add('hidden');
+        }
+
+        // 리포트 다운로드
+        function downloadReport(orderId) {
+            window.location.href = `/api/reports/${orderId}/download`;
+        }
+
+        // 상태 배지 가져오기
+        function getStatusBadge(status) {
+            const badges = {
+                'pending': '<span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">대기중</span>',
+                'approved': '<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">승인됨</span>',
+                'rejected': '<span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">거절됨</span>',
+                'in_progress': '<span class="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800">진행중</span>',
+                'completed': '<span class="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800">완료</span>'
+            };
+            return badges[status] || badges['pending'];
+        }
+
+        // 통계 업데이트
+        function updateStatistics(orders) {
+            const stats = {
+                pending: 0,
+                approved: 0,
+                in_progress: 0,
+                completed: 0
+            };
+
+            orders.forEach(order => {
+                if (order.status === 'pending') stats.pending++;
+                else if (order.status === 'approved') stats.approved++;
+                else if (order.status === 'in_progress') stats.in_progress++;
+                else if (order.status === 'completed') stats.completed++;
+            });
+
+            document.getElementById('pending-count').textContent = stats.pending;
+            document.getElementById('approved-count').textContent = stats.approved;
+            document.getElementById('progress-count').textContent = stats.in_progress;
+            document.getElementById('completed-count').textContent = stats.completed;
+        }
+
+        // 날짜 포맷
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        }
+
+        // 페이지 로드 시 실행
+        window.onload = function() {
+            loadOrders();
+            // 30초마다 자동 새로고침
+            setInterval(loadOrders, 30000);
+        };
+    </script>
+</body>
+</html>

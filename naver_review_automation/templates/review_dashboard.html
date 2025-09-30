@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>리뷰 작성 대시보드</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    <!-- 네비게이션 -->
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-bold text-gray-900">리뷰 작성 대시보드</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-gray-600">작성자: {{ user.full_name }}</span>
+                    <a href="/logout" class="text-red-600 hover:text-red-700">
+                        <i class="fas fa-sign-out-alt mr-1"></i>로그아웃
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 대시보드 -->
+    <div class="max-w-7xl mx-auto p-6">
+        <!-- 헤더 -->
+        <div class="mb-8">
+            <h2 class="text-3xl font-bold text-gray-900">리뷰 작성 현황</h2>
+            <p class="text-gray-600 mt-2">할당된 리뷰 작성 작업을 확인하고 관리하세요</p>
+        </div>
+
+        <!-- 통계 카드 -->
+        <div class="grid grid-cols-3 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 bg-blue-100 rounded-lg p-3">
+                        <i class="fas fa-tasks text-blue-600 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm text-gray-600">오늘 작성 목표</p>
+                        <p class="text-2xl font-bold text-gray-900">10건</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 bg-green-100 rounded-lg p-3">
+                        <i class="fas fa-check-double text-green-600 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm text-gray-600">오늘 완료</p>
+                        <p class="text-2xl font-bold text-gray-900">3건</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 bg-purple-100 rounded-lg p-3">
+                        <i class="fas fa-chart-line text-purple-600 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm text-gray-600">이번 달 총 작성</p>
+                        <p class="text-2xl font-bold text-gray-900">45건</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 작업 안내 -->
+        <div class="bg-blue-50 border-l-4 border-blue-500 p-6 mb-8">
+            <div class="flex items-center">
+                <i class="fas fa-info-circle text-blue-500 text-xl mr-4"></i>
+                <div>
+                    <h3 class="text-lg font-semibold text-blue-900">리뷰 작성 가이드</h3>
+                    <p class="text-blue-700 mt-1">
+                        • 각 리뷰는 실제 방문한 것처럼 자연스럽게 작성해주세요<br>
+                        • 메뉴명과 가격 등 구체적인 정보를 포함해주세요<br>
+                        • 작성 완료 후 반드시 제출 버튼을 눌러주세요
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 작업 목록 -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">오늘의 작업 목록</h3>
+            </div>
+            <div class="p-6">
+                <div class="text-center text-gray-500 py-12">
+                    <i class="fas fa-clipboard-list text-6xl text-gray-300 mb-4"></i>
+                    <p class="text-lg">현재 할당된 작업이 없습니다</p>
+                    <p class="text-sm mt-2">관리자에게 작업 할당을 요청해주세요</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
