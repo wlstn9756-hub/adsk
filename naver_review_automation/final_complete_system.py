@@ -1891,7 +1891,7 @@ async def download_admin_order_report(
             for review in sorted_reviews:
                 # 모든 리뷰를 data 리스트에 추가
                 data.append({
-                    '영수증 날짜': review.review_date.strftime('%Y-%m-%d') if review.review_date else '',
+                    '영수증 날짜': review.receipt_date_str or '',
                     '리뷰 URL': review.review_url,
                     '리뷰 내용': review.content or ''
                 })
@@ -2151,7 +2151,7 @@ async def download_order_report(
             for review in sorted_reviews:
                 # 모든 리뷰를 data 리스트에 추가
                 data.append({
-                    '영수증 날짜': review.review_date.strftime('%Y-%m-%d') if review.review_date else '',
+                    '영수증 날짜': review.receipt_date_str or '',
                     '리뷰 URL': review.review_url,
                     '리뷰 내용': review.content or ''
                 })
