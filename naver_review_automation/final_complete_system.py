@@ -3175,38 +3175,53 @@ def extract_reviews_background(review_ids: List[int]):
                     review.receipt_date_str = receipt_date
                     review.extracted_at = datetime.now()
 
-                    # 처음 추출 성공한 경우에만 카운팅 업데이트
-                    if old_content == "내용 추출 대기중" and order:
-                        # 중복 체크 - 같은 업체명, 같은 URL, 같은 내용이 이미 추출된 경우
-                        existing = db.query(Review).join(ReceiptWorkOrder).filter(
-                            Review.id != review.id,
-                            ReceiptWorkOrder.business_name == order.business_name,
-                            Review.review_url == review.review_url,
-                            Review.content == review_text,  # 같은 내용
+                    # 추출 성공 시 항상 주문 상태 확인 및 업데이트
+                    if order:
+                        # 처음 추출 성공한 경우에만 카운팅
+                        if old_content == "내용 추출 대기중":
+                            # 중복 체크 - 같은 업체명, 같은 URL, 같은 내용이 이미 추출된 경우
+                            existing = db.query(Review).join(ReceiptWorkOrder).filter(
+                                Review.id != review.id,
+                                ReceiptWorkOrder.business_name == order.business_name,
+                                Review.review_url == review.review_url,
+                                Review.content == review_text,  # 같은 내용
+                                Review.content != "내용 추출 대기중",
+                                Review.content != None,
+                                Review.content != ""
+                            ).first()
+
+                            if existing:
+                                # 중복이면 현재 리뷰 삭제 (고객에게 보이지 않도록)
+                                print(f"[중복 발견] 리뷰 {review_id} - 동일 업체명/URL/내용 (삭제)")
+                                db.delete(review)
+                                db.commit()
+                                continue  # 다음 리뷰로
+                            else:
+                                # 중복이 아닌 경우만 카운팅
+                                if order.completed_count < order.total_count:
+                                    order.completed_count += 1
+                                    print(f"리뷰 {review_id} 추출 완료 - 카운팅: {order.completed_count}/{order.total_count}")
+                                else:
+                                    print(f"리뷰 {review_id} - 이미 목표 달성 (스킵): {order.completed_count}/{order.total_count}")
+
+                        # 추출이 완료된 리뷰 수를 다시 확인하고 주문 상태 업데이트
+                        extracted_count = db.query(Review).filter(
+                            Review.order_id == order.id,
                             Review.content != "내용 추출 대기중",
                             Review.content != None,
-                            Review.content != ""
-                        ).first()
+                            Review.content != "",
+                            ~Review.content.like("추출 실패%")
+                        ).count()
 
-                        if existing:
-                            # 중복이면 현재 리뷰 삭제 (고객에게 보이지 않도록)
-                            print(f"[중복 발견] 리뷰 {review_id} - 동일 업체명/URL/내용 (삭제)")
-                            db.delete(review)
-                            db.commit()
-                            continue  # 다음 리뷰로
-                        else:
-                            # 중복이 아닌 경우만 카운팅
-                            # 카운트가 total_count를 초과하지 않도록 체크
-                            if order.completed_count < order.total_count:
-                                order.completed_count += 1
-                                if order.completed_count >= order.total_count:
-                                    order.status = 'completed'
-                                    order.completed_at = datetime.now()
-                                print(f"리뷰 {review_id} 추출 완료 - 카운팅: {order.completed_count}/{order.total_count}")
-                            else:
-                                print(f"리뷰 {review_id} - 이미 목표 달성 (스킵): {order.completed_count}/{order.total_count}")
+                        # 추출된 리뷰 수가 목표에 도달하면 completed로 변경
+                        if extracted_count >= order.total_count and order.status != 'completed':
+                            order.status = 'completed'
+                            order.completed_at = datetime.now()
+                            order.completed_count = extracted_count
+                            print(f"[주문 완료] 주문 {order.id} - {order.business_name}: {extracted_count}/{order.total_count} 리뷰 추출 완료")
                 else:
                     review.content = f"추출 실패: {review_text[:100] if review_text else '알 수 없음'}"
+                    print(f"리뷰 {review_id} 추출 실패: {review_text[:50] if review_text else '알 수 없음'}")
 
                 db.commit()
 
