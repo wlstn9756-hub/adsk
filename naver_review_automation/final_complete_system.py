@@ -685,14 +685,7 @@ async def create_receipt_order(
     try:
         order_data = await request.json()
 
-        # 현재 시간 확인 (오후 4시 이후 체크)
         now = datetime.now()
-        if now.hour >= 16:  # 오후 4시 이후
-            return JSONResponse({
-                "success": False,
-                "message": "작업 요청은 오후 4시까지만 가능합니다. 내일 다시 시도해주세요."
-            }, status_code=400)
-
         order_no = f"RC{now.strftime('%Y%m%d%H%M%S')}"
         receipt_date = date.today()
         weekday = receipt_date.weekday()  # 0=월, 1=화, 2=수, 3=목, 4=금, 5=토, 6=일
