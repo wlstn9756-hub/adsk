@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>영수증 생성기 - 관리자</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .back-button {
+            display: inline-block;
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            background: #f0f0f0;
+            color: #333;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .back-button:hover {
+            background: #e0e0e0;
+            transform: translateX(-5px);
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="date"],
+        .form-group input[type="number"],
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group textarea {
+            min-height: 150px;
+            resize: vertical;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .generate-button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s;
+            margin-top: 20px;
+        }
+
+        .generate-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .generate-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .info-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 25px;
+            border-radius: 5px;
+        }
+
+        .info-box h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .info-box ul {
+            list-style-position: inside;
+            color: #666;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result-message {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .result-message.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            display: block;
+        }
+
+        .result-message.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/admin/dashboard" class="back-button">← 관리자 대시보드로 돌아가기</a>
+
+        <div class="header">
+            <h1>🧾 영수증 생성기</h1>
+            <p>네이버 리뷰용 영수증을 자동으로 생성합니다</p>
+        </div>
+
+        <div class="info-box">
+            <h3>📋 사용 방법</h3>
+            <ul>
+                <li>상점 정보와 메뉴를 입력하세요</li>
+                <li>날짜 범위와 하루 생성 개수를 설정하세요</li>
+                <li>영수증 이미지가 ZIP 파일로 다운로드됩니다</li>
+                <li>생성된 영수증은 최소 50분 간격으로 생성됩니다</li>
+            </ul>
+        </div>
+
+        <form id="receiptForm">
+            <h2 style="margin-bottom: 20px; color: #333;">기본 정보</h2>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>상호명 *</label>
+                    <input type="text" name="store_name" required placeholder="예: 맛있는집">
+                </div>
+                <div class="form-group">
+                    <label>사업자번호 *</label>
+                    <input type="text" name="biz_num" required placeholder="예: 123-45-67890">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>대표자명 *</label>
+                    <input type="text" name="owner_name" required placeholder="예: 홍길동">
+                </div>
+                <div class="form-group">
+                    <label>전화번호 *</label>
+                    <input type="text" name="tel" required placeholder="예: 02-1234-5678">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>주소 *</label>
+                <input type="text" name="address" required placeholder="예: 서울시 강남구 테헤란로 123">
+            </div>
+
+            <h2 style="margin: 40px 0 20px; color: #333;">메뉴 설정</h2>
+
+            <div class="form-group">
+                <label>네이버 플레이스 URL (자동 메뉴 추출)</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="naver_url" placeholder="https://m.place.naver.com/restaurant/...">
+                    <button type="button" onclick="fetchNaverMenu()" class="generate-button" style="width: auto; margin: 0; padding: 10px 20px; font-size: 1em;">
+                        🔍 메뉴 가져오기
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>메뉴 입력 (한 줄에 하나씩) *</label>
+                <textarea id="menu_text" name="menu_text" required placeholder="불고기: 12000
+김치찌개: 8000
+된장찌개: 8000
+제육볶음: 11000
+
+또는
+
+불고기 12000
+김치찌개 8000"></textarea>
+            </div>
+
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="apply_filter" name="apply_filter">
+                    <label for="apply_filter">메뉴명 7글자 이하로 필터링 (네이버 영수증 형식)</label>
+                </div>
+            </div>
+
+            <h2 style="margin: 40px 0 20px; color: #333;">날짜 및 시간 설정</h2>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>시작 날짜 *</label>
+                    <input type="date" name="start_date" required>
+                </div>
+                <div class="form-group">
+                    <label>종료 날짜 *</label>
+                    <input type="date" name="end_date" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>하루 생성 개수 *</label>
+                    <input type="number" name="daily_count" required value="3" min="1" max="20">
+                </div>
+                <div class="form-group">
+                    <label>영업 시작 시간</label>
+                    <input type="number" name="start_hour" value="9" min="0" max="23">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>영업 종료 시간</label>
+                <input type="number" name="end_hour" value="22" min="0" max="23">
+            </div>
+
+            <button type="submit" class="generate-button" id="generateBtn">
+                🎨 영수증 생성하기
+            </button>
+        </form>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>영수증을 생성 중입니다... 잠시만 기다려주세요.</p>
+        </div>
+
+        <div class="result-message" id="resultMessage"></div>
+    </div>
+
+    <script>
+        const form = document.getElementById('receiptForm');
+        const generateBtn = document.getElementById('generateBtn');
+        const loading = document.getElementById('loading');
+        const resultMessage = document.getElementById('resultMessage');
+
+        // 오늘 날짜를 기본값으로 설정
+        const today = new Date().toISOString().split('T')[0];
+        document.querySelector('input[name="start_date"]').value = today;
+        document.querySelector('input[name="end_date"]').value = today;
+
+        // 네이버 플레이스에서 메뉴 가져오기
+        async function fetchNaverMenu() {
+            const url = document.getElementById('naver_url').value.trim();
+            if (!url) {
+                alert('네이버 플레이스 URL을 입력해주세요.');
+                return;
+            }
+
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '⏳ 메뉴 가져오는 중...';
+
+            try {
+                const response = await fetch('/api/admin/receipt/fetch-menu', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ url: url })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('menu_text').value = data.menu_text;
+                    resultMessage.className = 'result-message success';
+                    const filterMsg = data.original_count > data.menu_count
+                        ? ` (${data.original_count}개 중 7글자 이하 ${data.menu_count}개 필터링됨)`
+                        : ` (${data.menu_count}개)`;
+                    resultMessage.textContent = `✅ 메뉴를 성공적으로 가져왔습니다!${filterMsg}`;
+                } else {
+                    throw new Error(data.message || '메뉴를 가져올 수 없습니다.');
+                }
+            } catch (error) {
+                resultMessage.className = 'result-message error';
+                resultMessage.textContent = `❌ 오류: ${error.message}`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔍 메뉴 가져오기';
+            }
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+
+            // 체크박스 값 처리
+            formData.set('apply_filter', document.getElementById('apply_filter').checked);
+
+            generateBtn.disabled = true;
+            loading.classList.add('active');
+            resultMessage.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/admin/receipt/generate', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    // ZIP 파일 다운로드
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `영수증_${formData.get('store_name')}_${formData.get('start_date')}_${formData.get('end_date')}.zip`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+
+                    resultMessage.className = 'result-message success';
+                    resultMessage.textContent = '✅ 영수증이 성공적으로 생성되었습니다! 다운로드를 확인해주세요.';
+                } else {
+                    const error = await response.json();
+                    throw new Error(error.message || '영수증 생성에 실패했습니다.');
+                }
+            } catch (error) {
+                resultMessage.className = 'result-message error';
+                resultMessage.textContent = `❌ 오류: ${error.message}`;
+            } finally {
+                generateBtn.disabled = false;
+                loading.classList.remove('active');
+            }
+        });
+    </script>
+</body>
+</html>

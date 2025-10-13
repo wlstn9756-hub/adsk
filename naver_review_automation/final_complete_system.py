@@ -3444,6 +3444,159 @@ async def get_order_reviews(
     except Exception as e:
         return JSONResponse({"success": False, "message": str(e)}, status_code=500)
 
+# ============================================
+# 영수증 생성기 (관리자 전용)
+# ============================================
+
+@app.get("/admin/receipt-generator")
+async def receipt_generator_page(
+    request: Request,
+    user = Depends(require_super_admin)
+):
+    """영수증 생성기 페이지 (관리자 전용)"""
+    return templates.TemplateResponse("receipt_generator.html", {
+        "request": request,
+        "user": user
+    })
+
+@app.post("/api/admin/receipt/fetch-menu")
+async def fetch_naver_menu_api(
+    request: Request,
+    user = Depends(require_super_admin)
+):
+    """네이버 플레이스에서 메뉴 가져오기"""
+    try:
+        from receipt_generator.naver_scraper import get_naver_place_menu, format_menu_for_textarea
+
+        body = await request.json()
+        url = body.get('url')
+
+        if not url:
+            return JSONResponse({
+                "success": False,
+                "message": "URL을 입력해주세요."
+            }, status_code=400)
+
+        # 메뉴 가져오기
+        menu_list = get_naver_place_menu(url)
+
+        if not menu_list:
+            return JSONResponse({
+                "success": False,
+                "message": "메뉴를 찾을 수 없습니다. URL을 확인해주세요."
+            }, status_code=400)
+
+        # 7글자 필터링 적용
+        from receipt_generator.receipt_generator import smart_filter_menu
+        filtered_menu = []
+        for menu_name, price in menu_list:
+            filtered_name = smart_filter_menu(menu_name, max_length=7)
+            if filtered_name:
+                filtered_menu.append((filtered_name, price))
+
+        if not filtered_menu:
+            return JSONResponse({
+                "success": False,
+                "message": "7글자 이하로 필터링한 결과 메뉴가 없습니다. 직접 입력해주세요."
+            }, status_code=400)
+
+        # 메뉴 텍스트로 변환
+        menu_text = format_menu_for_textarea(filtered_menu)
+
+        return JSONResponse({
+            "success": True,
+            "menu_text": menu_text,
+            "menu_count": len(filtered_menu),
+            "original_count": len(menu_list)
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({
+            "success": False,
+            "message": f"메뉴 가져오기 실패: {str(e)}"
+        }, status_code=500)
+
+@app.post("/api/admin/receipt/generate")
+async def generate_receipt_api(
+    store_name: str = Form(...),
+    biz_num: str = Form(...),
+    owner_name: str = Form(...),
+    tel: str = Form(...),
+    address: str = Form(...),
+    menu_text: str = Form(...),
+    start_date: str = Form(...),
+    end_date: str = Form(...),
+    daily_count: int = Form(...),
+    start_hour: int = Form(9),
+    end_hour: int = Form(22),
+    apply_filter: bool = Form(False),
+    user = Depends(require_super_admin)
+):
+    """영수증 생성 API"""
+    try:
+        from receipt_generator.receipt_generator import generate_receipts_batch_web, parse_menu_input
+        from datetime import datetime
+        import zipfile
+        import io
+
+        # 날짜 파싱
+        start = datetime.strptime(start_date, "%Y-%m-%d")
+        end = datetime.strptime(end_date, "%Y-%m-%d")
+
+        # 상점 정보
+        store_info = {
+            "상호명": store_name,
+            "사업자번호": biz_num,
+            "대표자명": owner_name,
+            "전화번호": tel,
+            "주소": address
+        }
+
+        # 메뉴 파싱
+        menu_pool = parse_menu_input(menu_text, apply_filter=apply_filter)
+
+        if not menu_pool:
+            return JSONResponse({
+                "success": False,
+                "message": "메뉴를 파싱할 수 없습니다. 형식을 확인해주세요."
+            }, status_code=400)
+
+        # 영수증 생성
+        results = generate_receipts_batch_web(
+            store_info, menu_pool, start, end, daily_count, start_hour, end_hour
+        )
+
+        # ZIP 파일 생성
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            for img_io, fname in results:
+                zip_file.writestr(fname, img_io.getvalue())
+
+        zip_buffer.seek(0)
+
+        # ZIP 파일 반환 (한글 파일명 인코딩)
+        from urllib.parse import quote
+        filename = f"영수증_{store_name}_{start_date}_{end_date}.zip"
+        encoded_filename = quote(filename)
+
+        return Response(
+            content=zip_buffer.getvalue(),
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
+            }
+        )
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({
+            "success": False,
+            "message": f"영수증 생성 실패: {str(e)}"
+        }, status_code=500)
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
