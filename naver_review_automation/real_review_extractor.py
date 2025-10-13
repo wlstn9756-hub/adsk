@@ -55,86 +55,114 @@ class RealNaverReviewExtractor:
         try:
             if not self.driver:
                 if not self.setup_selenium():
+                    logger.error("Selenium 설정 실패, HTTP 방식으로 전환")
                     return self.extract_with_http(url)
-                    
+
+            logger.info(f"개별 리뷰 페이지 로딩: {url}")
             self.driver.get(url)
-            time.sleep(3)
-            
+            time.sleep(4)  # 로딩 대기 시간 증가
+
             soup = BeautifulSoup(self.driver.page_source, 'html.parser')
-            
+
             # 리뷰 본문 추출 - data-pui-click-code="reviewend.text"
             review_text = ""
             review_elem = soup.find('a', {'data-pui-click-code': 'reviewend.text'})
             if review_elem:
                 review_text = review_elem.get_text(strip=True)
                 logger.info(f"리뷰 본문 추출 성공: {review_text[:50]}...")
-            
+            else:
+                # 대체 선택자 시도
+                review_div = soup.find('div', class_='pui__vn15t2')
+                if review_div:
+                    review_text = review_div.get_text(strip=True)
+                    logger.info(f"대체 선택자로 리뷰 본문 추출: {review_text[:50]}...")
+                else:
+                    logger.warning("리뷰 본문을 찾을 수 없습니다")
+
             # 영수증 날짜 추출 - time 태그
             receipt_date = ""
             time_elem = soup.find('time', {'aria-hidden': 'true'})
             if time_elem:
                 receipt_date = time_elem.get_text(strip=True)
                 logger.info(f"영수증 날짜 추출: {receipt_date}")
-            
+            else:
+                logger.warning("영수증 날짜 time 태그를 찾을 수 없습니다")
+
             return (
                 review_text or "리뷰 본문을 찾을 수 없습니다",
                 receipt_date or "영수증 날짜를 찾을 수 없습니다"
             )
-            
+
         except Exception as e:
-            logger.error(f"Selenium 추출 오류: {e}")
-            return "Selenium 추출 실패", "날짜 추출 실패"
+            logger.error(f"Selenium 추출 오류 상세: {type(e).__name__} - {str(e)}", exc_info=True)
+            return f"Selenium 추출 실패: {type(e).__name__}", "날짜 추출 실패"
 
     def extract_list_review_selenium(self, url: str, shop_name: str) -> Tuple[str, str]:
         """Selenium으로 리뷰 목록에서 특정 업체 리뷰 추출"""
         try:
             if not self.driver:
                 if not self.setup_selenium():
+                    logger.error("Selenium 설정 실패, HTTP 방식으로 전환")
                     return self.extract_with_http(url)
-                    
+
+            logger.info(f"페이지 로딩 시작: {url}")
             self.driver.get(url)
-            
+
             # 단축 URL 리디렉션 대기
             if "naver.me" in url:
-                WebDriverWait(self.driver, 10).until(lambda d: d.current_url != url)
-                logger.info(f"리디렉션 완료: {self.driver.current_url}")
-            
-            time.sleep(3)
-            
+                try:
+                    WebDriverWait(self.driver, 10).until(lambda d: d.current_url != url)
+                    logger.info(f"리디렉션 완료: {self.driver.current_url}")
+                except Exception as e:
+                    logger.error(f"리디렉션 대기 실패: {e}")
+
+            time.sleep(4)  # 페이지 로딩 대기 시간 증가
+
             # 업체명으로 리뷰 찾기
             soup = BeautifulSoup(self.driver.page_source, 'html.parser')
             target_review = None
-            
+
             review_blocks = soup.find_all('div', class_='hahVh2')
             logger.info(f"리뷰 블록 {len(review_blocks)}개 발견")
-            
+
+            if len(review_blocks) == 0:
+                logger.error("리뷰 블록을 찾을 수 없습니다. 페이지 구조가 변경되었을 수 있습니다.")
+                return "리뷰 블록을 찾을 수 없습니다", "날짜 추출 불가"
+
+            # 먼저 모든 업체명 로깅
+            all_shop_names = []
             for block in review_blocks:
                 shop_elem = block.find('span', class_='pui__pv1E2a')
-                if shop_elem and shop_elem.text.strip() == shop_name:
-                    target_review = block
-                    logger.info(f"업체명 '{shop_name}' 매칭 성공")
-                    break
-            
+                if shop_elem:
+                    shop_text = shop_elem.text.strip()
+                    all_shop_names.append(shop_text)
+                    if shop_text == shop_name:
+                        target_review = block
+                        logger.info(f"업체명 '{shop_name}' 매칭 성공")
+                        break
+
+            logger.info(f"발견된 업체명들: {all_shop_names[:5]}")
+
             # 스크롤해서 더 찾기
             if not target_review:
-                logger.info("스크롤하면서 업체명 검색")
+                logger.info(f"첫 페이지에서 '{shop_name}' 미발견, 스크롤 시작")
                 for i in range(5):
                     self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                     time.sleep(2)
-                    
+
                     soup = BeautifulSoup(self.driver.page_source, 'html.parser')
                     review_blocks = soup.find_all('div', class_='hahVh2')
-                    
+
                     for block in review_blocks:
                         shop_elem = block.find('span', class_='pui__pv1E2a')
                         if shop_elem and shop_elem.text.strip() == shop_name:
                             target_review = block
                             logger.info(f"스크롤 {i+1}회차에서 업체명 발견")
                             break
-                    
+
                     if target_review:
                         break
-            
+
             # 리뷰 데이터 추출
             if target_review:
                 # 더보기 버튼 클릭 시도
@@ -157,33 +185,40 @@ class RealNaverReviewExtractor:
                                             target_review = block
                                             break
                                     break
-                                except:
-                                    pass
+                                except Exception as inner_e:
+                                    logger.warning(f"더보기 버튼 클릭 실패: {inner_e}")
                 except Exception as e:
-                    logger.warning(f"더보기 버튼 클릭 실패: {e}")
-                
+                    logger.warning(f"더보기 버튼 처리 실패: {e}")
+
                 # 리뷰 본문 추출
                 review_text = ""
                 review_div = target_review.find('div', class_='pui__vn15t2')
                 if review_div:
                     review_text = review_div.text.strip()
-                
+                    logger.info(f"리뷰 본문 추출 성공: {review_text[:50]}...")
+                else:
+                    logger.warning("리뷰 본문 div를 찾을 수 없습니다")
+
                 # 영수증 날짜 추출
                 receipt_date = ""
                 time_elem = target_review.find('time', {'aria-hidden': 'true'})
                 if time_elem:
                     receipt_date = time_elem.text.strip()
-                
+                    logger.info(f"영수증 날짜 추출: {receipt_date}")
+                else:
+                    logger.warning("영수증 날짜 time 태그를 찾을 수 없습니다")
+
                 return (
                     review_text or "리뷰 본문을 찾을 수 없습니다",
                     receipt_date or "영수증 날짜를 찾을 수 없습니다"
                 )
             else:
+                logger.error(f"업체명 '{shop_name}'과 일치하는 리뷰를 찾을 수 없습니다. 발견된 업체명: {all_shop_names[:3]}")
                 return f"업체명 '{shop_name}'과 일치하는 리뷰를 찾을 수 없습니다", "날짜 정보 없음"
-                
+
         except Exception as e:
-            logger.error(f"리뷰 목록 추출 오류: {e}")
-            return "추출 오류 발생", "날짜 추출 실패"
+            logger.error(f"리뷰 목록 추출 오류 상세: {type(e).__name__} - {str(e)}", exc_info=True)
+            return f"추출 오류 발생: {type(e).__name__}", "날짜 추출 실패"
 
     def extract_with_http(self, url: str) -> Tuple[str, str]:
         """HTTP 요청으로 기본 정보 추출 (Chrome 없을 때)"""
