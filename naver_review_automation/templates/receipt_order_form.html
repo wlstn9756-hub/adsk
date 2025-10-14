@@ -102,7 +102,7 @@
                         <!-- 플레이스 등록한 번호 -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">
-                                플레이스 등록한 번호 <span class="text-red-500">*</span>
+                                플레이스 등록한 전화 번호 <span class="text-red-500">*</span>
                             </label>
                             <input type="text"
                                    name="place_number"
@@ -152,7 +152,20 @@
                                     • 시작일은 접수일 다음날로 자동 설정됩니다.<br>
                                     • 종료일은 작업 일수에 따라 자동 계산됩니다 (주말 포함)<br>
                                     • 주말 접수시 월요일부터 작업 시작됩니다.<br>
-                                    • 작성된 URL은 매주 월,수,금 UI에서 업데이트 됩니다.
+                                    • 작성된 URL은 종료 이후 UI에서 업데이트 됩니다.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4">
+                        <div class="flex">
+                            <i class="fas fa-exclamation-triangle text-amber-500 mr-2 mt-0.5"></i>
+                            <div>
+                                <p class="text-sm text-amber-800">
+                                    <strong class="font-semibold">⚠️ 작업 기간 안내</strong><br>
+                                    리뷰어들이 신청 후 작성을 지연하거나 작성하지 않는 경우도 간혹 발생하기 때문에,
+                                    <strong class="font-bold text-amber-900">예정된 종료일 기준으로 최대 2~3일 정도 여유 기간이 추가로 소요될 수 있습니다.</strong>
                                 </p>
                             </div>
                         </div>
@@ -236,7 +249,101 @@
                     </div>
                 </div>
 
-                <!-- 섹션 3: 가이드라인 -->
+                <!-- 섹션 3: 이미지 첨부 -->
+                <div class="border-b pb-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                        <i class="fas fa-image text-gray-600 mr-2"></i>이미지 첨부 <span class="text-red-500">*</span>
+                    </h3>
+
+                    <div class="space-y-4">
+                        <!-- 이미지 업로드 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                영수증 이미지 <span class="text-red-500">*</span>
+                            </label>
+                            <input type="file"
+                                   id="attachmentImages"
+                                   name="attachment_images"
+                                   accept="image/jpeg,image/png,image/jpg"
+                                   multiple
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                   required>
+                            <p class="text-xs text-gray-500 mt-1">
+                                JPG, PNG 형식, 최대 5MB, 여러 장 업로드 가능 (최소 1장 필수)
+                            </p>
+                        </div>
+
+                        <!-- 미리보기 영역 -->
+                        <div id="imagePreview" class="grid grid-cols-3 gap-4 mt-4">
+                            <!-- JavaScript로 동적 생성 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 섹션 4: 리뷰 자료 업로드 -->
+                <div class="border-b pb-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                        <i class="fas fa-file-alt text-gray-600 mr-2"></i>리뷰 자료 업로드 <span class="text-gray-400 text-xs">(선택사항)</span>
+                    </h3>
+
+                    <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+                        <div class="flex">
+                            <i class="fas fa-info-circle text-blue-400 mr-2"></i>
+                            <div>
+                                <p class="text-sm text-blue-700 mb-2">
+                                    <strong>리뷰 복붙멘트와 사진을 미리 준비하신 경우 업로드해주세요.</strong>
+                                </p>
+                                <p class="text-xs text-blue-600">
+                                    • 파일 형식: 복붙멘트 | 사진번호 (예: 1,2,3)<br>
+                                    • 사진 ZIP: 1.jpg, 2.jpg, 3.jpg... 형식으로 번호만 붙여주세요<br>
+                                    • 사진은 선택사항이며, 멘트만 있어도 됩니다
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <!-- 예시 템플릿 다운로드 -->
+                        <div class="flex gap-2">
+                            <a href="/static/review_template.xlsx" download
+                               class="inline-flex items-center px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition text-sm">
+                                <i class="fas fa-download mr-2"></i>엑셀 템플릿 다운로드
+                            </a>
+                        </div>
+
+                        <!-- 엑셀 파일 업로드 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                리뷰 멘트 파일 <span class="text-gray-400 text-xs">(선택)</span>
+                            </label>
+                            <input type="file"
+                                   id="reviewExcel"
+                                   name="review_excel"
+                                   accept=".xlsx,.xls,.csv,.cell,.show,.hwp"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">
+                                엑셀/한셀 파일 (.xlsx, .xls, .csv, .cell, .show, .hwp), 최대 10MB
+                            </p>
+                        </div>
+
+                        <!-- 사진 ZIP 파일 업로드 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                리뷰 사진 ZIP 파일 <span class="text-gray-400 text-xs">(선택)</span>
+                            </label>
+                            <input type="file"
+                                   id="reviewPhotos"
+                                   name="review_photos"
+                                   accept=".zip"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">
+                                ZIP 파일, 최대 50MB (1.jpg, 2.jpg, 3.jpg... 형식으로 번호만)
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 섹션 5: 가이드라인 -->
                 <div class="pb-6">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">
                         <i class="fas fa-list-check text-gray-600 mr-2"></i>작업 가이드라인
@@ -322,6 +429,55 @@
             document.getElementById('total_count').textContent = totalCount || 0;
         }
 
+        // 이미지 미리보기
+        document.getElementById('attachmentImages').addEventListener('change', function(e) {
+            const previewContainer = document.getElementById('imagePreview');
+            previewContainer.innerHTML = '';
+
+            const files = Array.from(e.target.files);
+
+            if (files.length === 0) return;
+
+            files.forEach((file, index) => {
+                // 파일 크기 체크 (5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    alert(`${file.name}은(는) 5MB를 초과합니다.`);
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const div = document.createElement('div');
+                    div.className = 'relative border rounded-lg overflow-hidden';
+                    div.innerHTML = `
+                        <img src="${event.target.result}" class="w-full h-32 object-cover">
+                        <button type="button"
+                                class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs hover:bg-red-600"
+                                onclick="removeImage(${index})">
+                            ×
+                        </button>
+                        <p class="text-xs text-gray-600 p-1 truncate">${file.name}</p>
+                    `;
+                    previewContainer.appendChild(div);
+                };
+                reader.readAsDataURL(file);
+            });
+        });
+
+        // 이미지 제거
+        window.removeImage = function(index) {
+            const input = document.getElementById('attachmentImages');
+            const dt = new DataTransfer();
+            const files = Array.from(input.files);
+
+            files.forEach((file, i) => {
+                if (i !== index) dt.items.add(file);
+            });
+
+            input.files = dt.files;
+            input.dispatchEvent(new Event('change'));
+        };
+
         // 페이지 로드 시 초기 설정
         window.onload = function() {
             const today = new Date();
@@ -335,27 +491,30 @@
         document.getElementById('receiptOrderForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
+            // 이미지 파일 체크
+            const imageInput = document.getElementById('attachmentImages');
+            if (imageInput.files.length === 0) {
+                alert('영수증 이미지를 최소 1장 업로드해주세요.');
+                return;
+            }
+
             const formData = new FormData(e.target);
-            const data = Object.fromEntries(formData.entries());
 
             // 날짜 정보 추가
-            data.receipt_date = document.getElementById('receipt_date').value.split(' ')[0];
-            data.start_date = document.getElementById('start_date').value.split(' ')[0];
-            data.end_date = document.getElementById('end_date').value.split(' ')[0];
-            data.total_count = parseInt(document.getElementById('total_count').textContent);
+            formData.set('receipt_date', document.getElementById('receipt_date').value.split(' ')[0]);
+            formData.set('start_date', document.getElementById('start_date').value.split(' ')[0]);
+            formData.set('end_date', document.getElementById('end_date').value.split(' ')[0]);
+            formData.set('total_count', document.getElementById('total_count').textContent);
 
             // 업종이 선택되지 않은 경우 기본값 설정
-            if (!data.business_type) {
-                data.business_type = '일반';
+            if (!formData.get('business_type')) {
+                formData.set('business_type', '일반');
             }
 
             try {
                 const response = await fetch('/api/receipt/order', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data)
+                    body: formData  // FormData 직접 전송 (Content-Type 자동 설정)
                 });
 
                 const result = await response.json();

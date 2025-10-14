@@ -131,6 +131,13 @@ class ReceiptWorkOrder(Base):
     unit_price = Column(Float, default=3000)
     total_price = Column(Float, nullable=False)
 
+    # 첨부 이미지 (영수증/사업자등록증)
+    attachment_images = Column(Text)  # JSON 배열 형식으로 저장: ["path1.jpg", "path2.jpg"]
+
+    # 리뷰 자료 (복붙멘트 & 사진)
+    review_excel_path = Column(Text)  # 엑셀 파일 경로
+    review_photos_path = Column(Text)  # 사진 ZIP 파일 경로
+
     # 상태 정보
     status = Column(String(20), default="pending")  # pending, approved, rejected, in_progress, completed
     rejection_reason = Column(Text)
@@ -679,51 +686,96 @@ async def update_client(
 @app.post("/api/receipt/order")
 async def create_receipt_order(
     request: Request,
+    business_name: str = Form(...),
+    representative_name: str = Form(...),
+    business_number: str = Form(...),
+    business_type: str = Form(...),
+    place_number: str = Form(...),
+    place_link: str = Form(...),
+    business_address: str = Form(...),
+    working_days: int = Form(...),
+    daily_count: int = Form(...),
+    receipt_date: str = Form(...),
+    start_date: str = Form(...),
+    end_date: str = Form(...),
+    total_count: int = Form(...),
+    guidelines: str = Form(None),
+    attachment_images: list[UploadFile] = File(...),
+    review_excel: UploadFile = File(None),
+    review_photos: UploadFile = File(None),
     user = Depends(require_login),
     db: Session = Depends(get_db)
 ):
     try:
-        order_data = await request.json()
-
         now = datetime.now()
         order_no = f"RC{now.strftime('%Y%m%d%H%M%S')}"
-        receipt_date = date.today()
-        weekday = receipt_date.weekday()  # 0=월, 1=화, 2=수, 3=목, 4=금, 5=토, 6=일
 
-        # 시작일 계산 (새로운 로직)
-        # 금요일(4) -> 토요일 시작 (+1일)
-        # 토요일(5) -> 월요일 시작 (+2일)
-        # 일요일(6) -> 월요일 시작 (+1일)
-        # 나머지 요일 -> 다음날 시작 (+1일)
-        if weekday == 4:  # 금요일
-            start_date = receipt_date + timedelta(days=1)  # 토요일부터
-        elif weekday == 5:  # 토요일
-            start_date = receipt_date + timedelta(days=2)  # 월요일부터
-        elif weekday == 6:  # 일요일
-            start_date = receipt_date + timedelta(days=1)  # 월요일부터
-        else:  # 월~목
-            start_date = receipt_date + timedelta(days=1)  # 다음날부터
+        # 이미지 파일 저장
+        upload_dir = "uploads/orders"
+        os.makedirs(upload_dir, exist_ok=True)
+
+        saved_image_paths = []
+        for idx, file in enumerate(attachment_images):
+            # 파일 확장자 확인
+            file_ext = file.filename.split('.')[-1].lower()
+            if file_ext not in ['jpg', 'jpeg', 'png']:
+                return JSONResponse({
+                    "success": False,
+                    "message": f"지원하지 않는 파일 형식입니다: {file.filename}"
+                }, status_code=400)
+
+            # 파일명 생성
+            file_name = f"{order_no}_{idx+1}.{file_ext}"
+            file_path = os.path.join(upload_dir, file_name)
+
+            # 파일 저장
+            with open(file_path, "wb") as f:
+                content = await file.read()
+                f.write(content)
+
+            saved_image_paths.append(file_path)
 
         # 필수 필드 검증
-        place_number = order_data.get('place_number', '').strip()
-        place_link = order_data.get('place_link', '').strip()
-
-        if not place_number:
+        if not place_number.strip():
             return JSONResponse({
                 "success": False,
                 "message": "플레이스 등록한 번호는 필수 입력 항목입니다."
             }, status_code=400)
 
-        if not place_link:
+        if not place_link.strip():
             return JSONResponse({
                 "success": False,
                 "message": "플레이스 링크는 필수 입력 항목입니다."
             }, status_code=400)
 
-        working_days = int(order_data.get('working_days', 1))
-        daily_count = int(order_data.get('daily_count', 0))
-        end_date = start_date + timedelta(days=working_days - 1)
-        total_count = daily_count * working_days
+        # 날짜 파싱
+        receipt_date_obj = datetime.strptime(receipt_date, '%Y-%m-%d').date()
+        start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
+        end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+        # 리뷰 자료 파일 저장 (선택사항)
+        review_excel_path = None
+        review_photos_path = None
+
+        if review_excel and review_excel.filename:
+            review_dir = "uploads/review_assets"
+            os.makedirs(review_dir, exist_ok=True)
+            excel_filename = f"{order_no}_review.xlsx"
+            excel_path = os.path.join(review_dir, excel_filename)
+            with open(excel_path, "wb") as f:
+                content = await review_excel.read()
+                f.write(content)
+            review_excel_path = excel_path
+
+        if review_photos and review_photos.filename:
+            review_dir = "uploads/review_assets"
+            os.makedirs(review_dir, exist_ok=True)
+            zip_filename = f"{order_no}_photos.zip"
+            zip_path = os.path.join(review_dir, zip_filename)
+            with open(zip_path, "wb") as f:
+                content = await review_photos.read()
+                f.write(content)
+            review_photos_path = zip_path
 
         # 고객사별 단가 가져오기
         company = db.query(Company).filter(Company.id == user.company_id).first()
@@ -734,22 +786,25 @@ async def create_receipt_order(
             order_no=order_no,
             company_id=user.company_id if user.company_id else 1,
             client_id=user.id,
-            business_name=order_data.get('business_name', ''),
-            representative_name=order_data.get('representative_name', ''),
-            business_number=order_data.get('business_number', ''),
-            business_type=order_data.get('business_type', '일반'),  # 업종 추가
-            place_number=order_data.get('place_number', ''),
-            place_link=order_data.get('place_link', ''),
-            business_address=order_data.get('business_address', ''),
-            receipt_date=receipt_date,
-            start_date=start_date,
-            end_date=end_date,
+            business_name=business_name,
+            representative_name=representative_name,
+            business_number=business_number,
+            business_type=business_type,
+            place_number=place_number,
+            place_link=place_link,
+            business_address=business_address,
+            receipt_date=receipt_date_obj,
+            start_date=start_date_obj,
+            end_date=end_date_obj,
             daily_count=daily_count,
             working_days=working_days,
             total_count=total_count,
             unit_price=unit_price,
             total_price=total_price,
-            guidelines=order_data.get('guidelines', '')
+            guidelines=guidelines if guidelines else '',
+            attachment_images=json.dumps(saved_image_paths),
+            review_excel_path=review_excel_path,
+            review_photos_path=review_photos_path
         )
 
         db.add(new_order)
@@ -3440,6 +3495,76 @@ async def get_order_reviews(
 # ============================================
 # 영수증 생성기 (관리자 전용)
 # ============================================
+
+@app.get("/uploads/orders/{filename}")
+async def get_order_image(
+    filename: str,
+    user = Depends(require_login),
+    db: Session = Depends(get_db)
+):
+    """주문 첨부 이미지 조회 (업체명으로 파일명 변경)"""
+    file_path = os.path.join("uploads/orders", filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="이미지를 찾을 수 없습니다")
+
+    # 파일명에서 주문번호 추출 (예: WO20250114001_1.jpg)
+    order_no = filename.split('_')[0]
+
+    # DB에서 주문 정보 조회하여 업체명 가져오기
+    order = db.query(ReceiptWorkOrder).filter(ReceiptWorkOrder.order_no == order_no).first()
+
+    if order:
+        # 파일 확장자 및 번호 추출
+        _, ext = os.path.splitext(filename)
+        file_number = filename.split('_')[1].split('.')[0] if '_' in filename else '1'
+
+        # 다운로드 파일명 생성
+        download_name = f"{order.business_name}_영수증_{file_number}{ext}"
+    else:
+        download_name = filename
+
+    return FileResponse(file_path, filename=download_name)
+
+@app.get("/static/{filename}")
+async def get_static_file(filename: str):
+    """정적 파일 제공 (템플릿 등)"""
+    file_path = os.path.join("static", filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다")
+    return FileResponse(file_path)
+
+@app.get("/uploads/review_assets/{filename}")
+async def get_review_asset(
+    filename: str,
+    user = Depends(require_login),
+    db: Session = Depends(get_db)
+):
+    """리뷰 자료 파일 다운로드 (업체명으로 파일명 변경)"""
+    file_path = os.path.join("uploads/review_assets", filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다")
+
+    # 파일명에서 주문번호 추출 (예: WO20250114001_review.xlsx)
+    order_no = filename.split('_')[0]
+
+    # DB에서 주문 정보 조회하여 업체명 가져오기
+    order = db.query(ReceiptWorkOrder).filter(ReceiptWorkOrder.order_no == order_no).first()
+
+    if order:
+        # 파일 확장자 추출
+        _, ext = os.path.splitext(filename)
+
+        # 파일 타입에 따라 다운로드 파일명 생성
+        if '_review' in filename and not '_photos' in filename:
+            download_name = f"{order.business_name}_리뷰멘트{ext}"
+        elif '_photos' in filename:
+            download_name = f"{order.business_name}_리뷰사진{ext}"
+        else:
+            download_name = f"{order.business_name}{ext}"
+    else:
+        download_name = filename
+
+    return FileResponse(file_path, filename=download_name)
 
 @app.get("/admin/receipt-generator")
 async def receipt_generator_page(

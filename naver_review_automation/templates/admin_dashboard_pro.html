@@ -225,6 +225,7 @@
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">작업기간</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">작업량</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">진행상황</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">첨부파일</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">액션</th>
                             </tr>
@@ -265,6 +266,31 @@
                                             <div class="{% if progress >= 80 %}gradient-green{% elif progress >= 50 %}gradient-yellow{% else %}bg-red-500{% endif %} h-2 rounded-full transition-all duration-500"
                                                  style="width: {{ progress }}%"></div>
                                         </div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-4">
+                                    <div class="flex flex-wrap gap-2 items-center">
+                                        {% if order.attachment_images %}
+                                            <button onclick='showAttachments("{{ order.id }}", {{ order.attachment_images|safe }})'
+                                                    class="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs transition">
+                                                <i class="fas fa-paperclip mr-1"></i>영수증
+                                            </button>
+                                        {% endif %}
+                                        {% if order.review_excel_path %}
+                                            <a href="/{{ order.review_excel_path.replace('\\', '/') }}" download
+                                               class="inline-flex items-center px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 text-xs transition">
+                                                <i class="fas fa-file-excel mr-1"></i>리뷰멘트
+                                            </a>
+                                        {% endif %}
+                                        {% if order.review_photos_path %}
+                                            <a href="/{{ order.review_photos_path.replace('\\', '/') }}" download
+                                               class="inline-flex items-center px-2 py-1 bg-purple-100 text-purple-700 rounded hover:bg-purple-200 text-xs transition">
+                                                <i class="fas fa-file-archive mr-1"></i>리뷰사진
+                                            </a>
+                                        {% endif %}
+                                        {% if not order.attachment_images and not order.review_excel_path and not order.review_photos_path %}
+                                            <span class="text-gray-400 text-xs">없음</span>
+                                        {% endif %}
                                     </div>
                                 </td>
                                 <td class="px-4 py-4">
@@ -910,6 +936,55 @@
                 alert('수정 중 오류가 발생했습니다: ' + error.message);
             }
         }
+
+        // 첨부 이미지 모달 표시
+        function showAttachments(orderId, images) {
+            const modal = document.getElementById('attachmentModal');
+            const container = document.getElementById('attachmentImages');
+            container.innerHTML = '';
+
+            images.forEach((imagePath, index) => {
+                // 경로 정규화 (역슬래시를 슬래시로 변환)
+                const normalizedPath = imagePath.replace(/\\/g, '/');
+                const filename = normalizedPath.split('/').pop();
+                const imageDiv = document.createElement('div');
+                imageDiv.className = 'border rounded-lg overflow-hidden';
+                imageDiv.innerHTML = `
+                    <img src="/${normalizedPath}" class="w-full h-48 object-cover cursor-pointer" onclick="window.open('/${normalizedPath}', '_blank')">
+                    <div class="p-2 bg-gray-50">
+                        <p class="text-xs text-gray-600 truncate">${filename}</p>
+                        <a href="/${normalizedPath}" download class="text-xs text-blue-600 hover:text-blue-800">
+                            <i class="fas fa-download mr-1"></i>다운로드
+                        </a>
+                    </div>
+                `;
+                container.appendChild(imageDiv);
+            });
+
+            modal.classList.remove('hidden');
+        }
+
+        // 모달 닫기
+        function closeAttachmentModal() {
+            document.getElementById('attachmentModal').classList.add('hidden');
+        }
     </script>
+
+    <!-- 첨부 이미지 모달 -->
+    <div id="attachmentModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-3/4 max-w-4xl shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-gray-900">
+                    <i class="fas fa-images mr-2"></i>첨부 이미지
+                </h3>
+                <button onclick="closeAttachmentModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div id="attachmentImages" class="grid grid-cols-3 gap-4">
+                <!-- JavaScript로 동적 생성 -->
+            </div>
+        </div>
+    </div>
 </body>
 </html>
