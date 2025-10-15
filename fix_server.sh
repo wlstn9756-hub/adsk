@@ -5,9 +5,15 @@ set -e
 
 echo "🔧 서버 수정 시작..."
 
+# 0. 코드 업데이트
+echo "📥 최신 코드 가져오기..."
+cd /var/www/adsketch
+git pull origin main
+echo "✅ 코드 업데이트 완료"
+
 # 1. DB 백업
 echo "📦 데이터베이스 백업 중..."
-cd /var/www/adsketch
+cd /var/www/adsketch/naver_review_automation
 cp final_complete_system.db final_complete_system.db.backup_$(date +%Y%m%d_%H%M%S)
 echo "✅ 백업 완료"
 
@@ -16,13 +22,15 @@ echo "🗄️ 데이터베이스 스키마 업데이트 중..."
 sqlite3 final_complete_system.db "ALTER TABLE receipt_work_orders ADD COLUMN attachment_images TEXT;" 2>/dev/null || echo "  - attachment_images 컬럼 이미 존재하거나 추가됨"
 sqlite3 final_complete_system.db "ALTER TABLE receipt_work_orders ADD COLUMN review_excel_path TEXT;" 2>/dev/null || echo "  - review_excel_path 컬럼 이미 존재하거나 추가됨"
 sqlite3 final_complete_system.db "ALTER TABLE receipt_work_orders ADD COLUMN review_photos_path TEXT;" 2>/dev/null || echo "  - review_photos_path 컬럼 이미 존재하거나 추가됨"
+sqlite3 final_complete_system.db "ALTER TABLE receipt_work_orders ADD COLUMN admin_memo TEXT;" 2>/dev/null || echo "  - admin_memo 컬럼 이미 존재하거나 추가됨"
 
 # 3. 컬럼 확인
 echo "✅ 추가된 컬럼 확인:"
-sqlite3 final_complete_system.db "PRAGMA table_info(receipt_work_orders);" | grep -E "attachment_images|review_excel_path|review_photos_path" || echo "  컬럼 조회 실패 - 수동 확인 필요"
+sqlite3 final_complete_system.db "PRAGMA table_info(receipt_work_orders);" | grep -E "attachment_images|review_excel_path|review_photos_path|admin_memo" || echo "  컬럼 조회 실패 - 수동 확인 필요"
 
 # 4. 필요한 디렉토리 생성
 echo "📁 필요한 디렉토리 생성 중..."
+cd /var/www/adsketch
 mkdir -p naver_review_automation/uploads/orders
 mkdir -p naver_review_automation/uploads/review_assets
 mkdir -p naver_review_automation/static
@@ -48,12 +56,12 @@ sleep 2
 
 # 8. 서비스 재시작
 echo "🔄 서비스 재시작 중..."
-systemctl restart adsketch
+systemctl restart naver-review
 sleep 5
 
 # 9. 서비스 상태 확인
 echo "📊 서비스 상태:"
-systemctl status adsketch --no-pager || true
+systemctl status naver-review --no-pager || true
 
 # 10. 포트 확인
 echo ""
@@ -63,7 +71,7 @@ netstat -tulpn | grep :8000 || echo "  포트 8000이 사용되지 않음"
 # 11. 최근 로그 확인
 echo ""
 echo "📋 최근 서비스 로그 (마지막 20줄):"
-journalctl -u adsketch -n 20 --no-pager
+journalctl -u naver-review -n 20 --no-pager
 
 echo ""
 echo "✅ 서버 수정 완료!"
