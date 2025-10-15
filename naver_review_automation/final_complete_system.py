@@ -145,6 +145,9 @@ class ReceiptWorkOrder(Base):
     approved_by = Column(Integer, ForeignKey("users.id"))
     completed_at = Column(DateTime)
 
+    # 관리자 메모
+    admin_memo = Column(Text)
+
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
@@ -2496,6 +2499,29 @@ async def get_extensions(
             })
 
         return result
+
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+@app.put("/api/admin/receipt/order/{order_id}/memo")
+async def update_order_memo(
+    order_id: int,
+    request: Request,
+    user = Depends(require_super_admin),
+    db: Session = Depends(get_db)
+):
+    """주문 메모 업데이트"""
+    try:
+        data = await request.json()
+        order = db.query(ReceiptWorkOrder).filter(ReceiptWorkOrder.id == order_id).first()
+
+        if not order:
+            return {"success": False, "message": "주문을 찾을 수 없습니다."}
+
+        order.admin_memo = data.get('memo', '')
+        db.commit()
+
+        return {"success": True, "message": "메모가 저장되었습니다."}
 
     except Exception as e:
         return {"success": False, "message": str(e)}

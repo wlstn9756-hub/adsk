@@ -221,12 +221,14 @@
                         <thead>
                             <tr class="bg-gray-50">
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">업체정보</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">고객사</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">접수일</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">작업기간</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">작업량</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">진행상황</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">첨부파일</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">메모</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">액션</th>
                             </tr>
                         </thead>
@@ -238,6 +240,10 @@
                                         <div class="text-sm font-medium text-gray-900">{{ order.business_name }}</div>
                                         <div class="text-xs text-gray-500">{{ order.representative_name }} | {{ order.order_no }}</div>
                                     </div>
+                                </td>
+                                <td class="px-4 py-4">
+                                    {% set company = order.company if order.company else None %}
+                                    <div class="text-sm text-gray-900">{{ company.display_name if company else '-' }}</div>
                                 </td>
                                 <td class="px-4 py-4">
                                     <div class="text-sm text-gray-900">{{ order.receipt_date.strftime('%Y-%m-%d') if order.receipt_date else '-' }}</div>
@@ -311,6 +317,13 @@
                                             <i class="fas fa-times-circle mr-1"></i> 거부
                                         </span>
                                     {% endif %}
+                                </td>
+                                <td class="px-4 py-4">
+                                    <button onclick="editMemo('{{ order.id }}', `{{ order.admin_memo if order.admin_memo else '' }}`)"
+                                            class="text-blue-600 hover:text-blue-800 text-xs">
+                                        <i class="fas fa-sticky-note mr-1"></i>
+                                        {{ '메모' if not order.admin_memo else '메모 (' + (order.admin_memo[:10] + '...' if order.admin_memo|length > 10 else order.admin_memo) + ')' }}
+                                    </button>
                                 </td>
                                 <td class="px-4 py-4">
                                     <div class="flex space-x-1">
@@ -986,5 +999,80 @@
             </div>
         </div>
     </div>
+
+    <!-- 메모 편집 모달 -->
+    <div id="memoModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-gray-900">
+                    <i class="fas fa-sticky-note mr-2"></i>관리자 메모
+                </h3>
+                <button onclick="closeMemoModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div>
+                <textarea id="memoText" rows="6"
+                          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          placeholder="메모를 입력하세요..."></textarea>
+                <div class="mt-4 flex justify-end space-x-2">
+                    <button onclick="closeMemoModal()"
+                            class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg transition">
+                        취소
+                    </button>
+                    <button onclick="saveMemo()"
+                            class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition">
+                        저장
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentMemoOrderId = null;
+
+        // 메모 편집
+        function editMemo(orderId, currentMemo) {
+            currentMemoOrderId = orderId;
+            document.getElementById('memoText').value = currentMemo || '';
+            document.getElementById('memoModal').classList.remove('hidden');
+        }
+
+        // 메모 모달 닫기
+        function closeMemoModal() {
+            document.getElementById('memoModal').classList.add('hidden');
+            currentMemoOrderId = null;
+        }
+
+        // 메모 저장
+        async function saveMemo() {
+            if (!currentMemoOrderId) return;
+
+            const memo = document.getElementById('memoText').value;
+
+            try {
+                const response = await fetch(`/api/admin/receipt/order/${currentMemoOrderId}/memo`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ memo: memo })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('메모가 저장되었습니다.');
+                    closeMemoModal();
+                    location.reload();
+                } else {
+                    alert('오류: ' + result.message);
+                }
+            } catch (error) {
+                alert('메모 저장 중 오류가 발생했습니다: ' + error.message);
+            }
+        }
+    </script>
 </body>
 </html>
