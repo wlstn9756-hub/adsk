@@ -3217,6 +3217,17 @@ def extract_reviews_background(review_ids: List[int]):
     print(f"[백그라운드] 추출 시작: {len(review_ids)}개 리뷰")
     db = SessionLocal()
     try:
+        # 먼저 기존의 "추출 실패" 리뷰들을 모두 삭제
+        failed_reviews = db.query(Review).filter(
+            Review.content.like("추출 실패%")
+        ).all()
+        if failed_reviews:
+            print(f"[백그라운드] 기존 추출 실패 리뷰 {len(failed_reviews)}개 삭제 중...")
+            for failed_review in failed_reviews:
+                db.delete(failed_review)
+            db.commit()
+            print(f"[백그라운드] 추출 실패 리뷰 삭제 완료")
+
         from real_review_extractor import get_extractor
         extractor = get_extractor()
         print(f"[백그라운드] extractor 생성 완료")
@@ -3294,8 +3305,9 @@ def extract_reviews_background(review_ids: List[int]):
                             order.completed_count = extracted_count
                             print(f"[주문 완료] 주문 {order.id} - {order.business_name}: {extracted_count}/{order.total_count} 리뷰 추출 완료")
                 else:
-                    review.content = f"추출 실패: {review_text[:100] if review_text else '알 수 없음'}"
-                    print(f"리뷰 {review_id} 추출 실패: {review_text[:50] if review_text else '알 수 없음'}")
+                    # 추출 실패한 리뷰는 삭제
+                    print(f"리뷰 {review_id} 추출 실패: {review_text[:50] if review_text else '알 수 없음'} - 리뷰 삭제")
+                    db.delete(review)
 
                 db.commit()
 
