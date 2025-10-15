@@ -918,8 +918,11 @@ async def get_company_orders(
         else:
             progress_rate = (order.completed_count / order.total_count * 100) if order.total_count > 0 else 0
 
-        # 리뷰 수 카운트
-        review_count = db.query(Review).filter(Review.order_id == order.id).count()
+        # 리뷰 수 카운트 - 추출 실패한 리뷰는 제외
+        review_count = db.query(Review).filter(
+            Review.order_id == order.id,
+            ~Review.content.like("추출 실패%")
+        ).count()
 
         result.append({
             "id": order.id,
@@ -965,8 +968,11 @@ async def get_all_orders(
         else:
             progress_rate = (order.completed_count / order.total_count * 100) if order.total_count > 0 else 0
 
-        # 리뷰 수 카운트
-        review_count = db.query(Review).filter(Review.order_id == order.id).count()
+        # 리뷰 수 카운트 - 추출 실패한 리뷰는 제외
+        review_count = db.query(Review).filter(
+            Review.order_id == order.id,
+            ~Review.content.like("추출 실패%")
+        ).count()
 
         # 연장 요청 확인 (비활성화)
         extension = None  # 연장 기능 제거
@@ -1889,12 +1895,16 @@ async def view_admin_order_details(
     db: Session = Depends(get_db)
 ):
     """어드민 주문 상세보기 페이지"""
-    order = db.query(ReceiptWorkOrder).options(
-        joinedload(ReceiptWorkOrder.reviews)
-    ).filter(ReceiptWorkOrder.id == order_id).first()
+    order = db.query(ReceiptWorkOrder).filter(ReceiptWorkOrder.id == order_id).first()
 
     if not order:
         raise HTTPException(status_code=404, detail="주문을 찾을 수 없습니다.")
+
+    # 추출 실패한 리뷰를 제외하고 리뷰 목록 조회
+    order.reviews = db.query(Review).filter(
+        Review.order_id == order_id,
+        ~Review.content.like("추출 실패%")
+    ).all()
 
     return templates.TemplateResponse("admin_order_details.html", {
         "request": request,
@@ -1911,12 +1921,16 @@ async def download_admin_order_report(
 ):
     """어드민 주문 리포트 다운로드"""
     try:
-        order = db.query(ReceiptWorkOrder).options(
-            joinedload(ReceiptWorkOrder.reviews)
-        ).filter(ReceiptWorkOrder.id == order_id).first()
+        order = db.query(ReceiptWorkOrder).filter(ReceiptWorkOrder.id == order_id).first()
 
         if not order:
             raise HTTPException(status_code=404, detail="주문을 찾을 수 없습니다.")
+
+        # 추출 실패한 리뷰를 제외하고 리뷰 목록 조회
+        order.reviews = db.query(Review).filter(
+            Review.order_id == order_id,
+            ~Review.content.like("추출 실패%")
+        ).all()
 
         # 엑셀 데이터 준비 - 한글 컬럼명 사용, 필요한 정보만 포함
         data = []
@@ -3513,8 +3527,11 @@ async def get_order_reviews(
         if not order:
             return JSONResponse({"success": False, "message": "주문을 찾을 수 없습니다."}, status_code=404)
 
-        # 리뷰 조회
-        reviews = db.query(Review).filter(Review.order_id == order_id).all()
+        # 리뷰 조회 - 추출 실패한 리뷰는 제외
+        reviews = db.query(Review).filter(
+            Review.order_id == order_id,
+            ~Review.content.like("추출 실패%")
+        ).all()
 
         review_data = []
         for review in reviews:
