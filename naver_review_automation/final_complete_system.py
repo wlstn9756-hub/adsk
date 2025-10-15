@@ -31,7 +31,9 @@ Base = declarative_base()
 
 # FastAPI 앱 생성
 app = FastAPI()
-templates = Jinja2Templates(directory="templates")
+# 템플릿 디렉토리 절대 경로 설정
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 # 세션 저장소 (메모리 기반)
 sessions = {}
