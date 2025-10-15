@@ -910,21 +910,36 @@ async def get_company_orders(
 
     result = []
     for order in orders:
-        # 완료된 주문은 항상 100%로 표시
-        if order.status == 'completed':
-            progress_rate = 100.0
-            # 완료된 주문의 completed_count를 total_count와 동기화
-            if order.completed_count != order.total_count:
-                order.completed_count = order.total_count
-                db.commit()
-        else:
-            progress_rate = (order.completed_count / order.total_count * 100) if order.total_count > 0 else 0
-
         # 리뷰 수 카운트 - 추출 실패한 리뷰는 제외
         review_count = db.query(Review).filter(
             Review.order_id == order.id,
             ~Review.content.like("추출 실패%")
         ).count()
+
+        # 실제 추출 완료된 리뷰 수 계산
+        extracted_count = db.query(Review).filter(
+            Review.order_id == order.id,
+            Review.content != "내용 추출 대기중",
+            Review.content != None,
+            Review.content != "",
+            ~Review.content.like("추출 실패%")
+        ).count()
+
+        # completed_count와 status 실시간 업데이트
+        if extracted_count != order.completed_count:
+            order.completed_count = extracted_count
+            db.commit()
+
+        if extracted_count >= order.total_count and order.status == 'approved':
+            order.status = 'completed'
+            order.completed_at = datetime.now()
+            db.commit()
+
+        # 완료된 주문은 항상 100%로 표시
+        if order.status == 'completed':
+            progress_rate = 100.0
+        else:
+            progress_rate = (order.completed_count / order.total_count * 100) if order.total_count > 0 else 0
 
         result.append({
             "id": order.id,
@@ -960,21 +975,36 @@ async def get_all_orders(
 
     result = []
     for order in orders:
-        # 완료된 주문은 항상 100%로 표시
-        if order.status == 'completed':
-            progress_rate = 100.0
-            # 완료된 주문의 completed_count를 total_count와 동기화
-            if order.completed_count != order.total_count:
-                order.completed_count = order.total_count
-                db.commit()
-        else:
-            progress_rate = (order.completed_count / order.total_count * 100) if order.total_count > 0 else 0
-
         # 리뷰 수 카운트 - 추출 실패한 리뷰는 제외
         review_count = db.query(Review).filter(
             Review.order_id == order.id,
             ~Review.content.like("추출 실패%")
         ).count()
+
+        # 실제 추출 완료된 리뷰 수 계산
+        extracted_count = db.query(Review).filter(
+            Review.order_id == order.id,
+            Review.content != "내용 추출 대기중",
+            Review.content != None,
+            Review.content != "",
+            ~Review.content.like("추출 실패%")
+        ).count()
+
+        # completed_count와 status 실시간 업데이트
+        if extracted_count != order.completed_count:
+            order.completed_count = extracted_count
+            db.commit()
+
+        if extracted_count >= order.total_count and order.status == 'approved':
+            order.status = 'completed'
+            order.completed_at = datetime.now()
+            db.commit()
+
+        # 완료된 주문은 항상 100%로 표시
+        if order.status == 'completed':
+            progress_rate = 100.0
+        else:
+            progress_rate = (order.completed_count / order.total_count * 100) if order.total_count > 0 else 0
 
         # 연장 요청 확인 (비활성화)
         extension = None  # 연장 기능 제거
