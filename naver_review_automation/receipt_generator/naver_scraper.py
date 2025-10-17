@@ -26,36 +26,27 @@ def get_chrome_driver():
     chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
     chrome_options.add_experimental_option('useAutomationExtension', False)
     chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36")
-    # 페이지 로드 타임아웃 설정 (30초)
-    chrome_options.add_argument("--page-load-timeout=30000")
-
+    
     try:
         # ChromeDriver 자동 설치 및 사용
         from selenium.webdriver.chrome.service import Service as ChromeService
         from webdriver_manager.chrome import ChromeDriverManager
-
+        
         # 최신 ChromeDriver 강제 다운로드
         service = ChromeService(ChromeDriverManager(driver_cache_valid_range=1).install())
         driver = webdriver.Chrome(service=service, options=chrome_options)
-
-        # 페이지 로드 및 스크립트 실행 타임아웃 설정
-        driver.set_page_load_timeout(30)  # 페이지 로드 30초 타임아웃
-        driver.set_script_timeout(30)  # 스크립트 실행 30초 타임아웃
-
+        
         # 자동화 감지 방지
         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-
+        
         return driver
     except Exception as e:
         print(f"ChromeDriver 설정 실패: {e}")
-
+        
         # 백업: 시스템 ChromeDriver 사용 시도
         try:
             print("시스템 ChromeDriver 사용 시도...")
             driver = webdriver.Chrome(options=chrome_options)
-            # 타임아웃 설정
-            driver.set_page_load_timeout(30)
-            driver.set_script_timeout(30)
             driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
             return driver
         except Exception as e2:
@@ -321,41 +312,18 @@ def extract_operating_hours(driver):
 def scrape_naver_place_info_selenium(url):
     """Selenium을 사용한 네이버 플레이스 정보 스크래핑 (메뉴 + 영업시간)"""
     driver = None
-    import signal
-
-    # 전체 실행 타임아웃 설정 (60초)
-    def timeout_handler(signum, frame):
-        raise TimeoutError("크롤링 타임아웃: 60초 초과")
-
-    # Windows에서는 signal.alarm이 작동하지 않으므로 try-except로 처리
-    start_time = time.time()
-    max_duration = 60  # 최대 60초
-
     try:
         driver = get_chrome_driver()
         if not driver:
-            return {'menu_items': [], 'operating_hours': None}
-
+            return []
+        
         print(f"페이지 로딩 중: {url}")
-        try:
-            driver.get(url)
-        except TimeoutException:
-            print("페이지 로딩 타임아웃 (30초 초과)")
-            return {'menu_items': [], 'operating_hours': None}
-
-        # 경과 시간 체크
-        if time.time() - start_time > max_duration:
-            print(f"전체 타임아웃 초과: {time.time() - start_time:.1f}초")
-            return {'menu_items': [], 'operating_hours': None}
-
+        driver.get(url)
+        
         # 페이지 로딩 대기
-        try:
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.TAG_NAME, "body"))
-            )
-        except TimeoutException:
-            print("body 태그 로딩 타임아웃")
-            return {'menu_items': [], 'operating_hours': None}
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.TAG_NAME, "body"))
+        )
         
         # 모바일 버전인지 확인
         is_mobile = 'm.place.naver.com' in url
@@ -363,12 +331,7 @@ def scrape_naver_place_info_selenium(url):
         
         # 메뉴 탭 찾기 및 클릭 (모바일/데스크톱 공통)
         print("메뉴 탭 찾기 시작...")
-
-        # 경과 시간 체크
-        if time.time() - start_time > max_duration:
-            print(f"전체 타임아웃 초과: {time.time() - start_time:.1f}초")
-            return {'menu_items': [], 'operating_hours': None}
-
+        
         # 정확한 메뉴 탭 선택자들
         menu_tab_selectors = [
             # 모바일 버전
@@ -383,35 +346,30 @@ def scrape_naver_place_info_selenium(url):
             '.menu-tab',
             'a[href*="menu"]'
         ]
-
+        
         menu_tab_clicked = False
-
+        
         for selector in menu_tab_selectors:
-            # 경과 시간 체크
-            if time.time() - start_time > max_duration:
-                print(f"메뉴 탭 찾기 중 타임아웃: {time.time() - start_time:.1f}초")
-                break
-
             try:
                 print(f"선택자 시도: {selector}")
                 menu_tabs = driver.find_elements(By.CSS_SELECTOR, selector)
                 print(f"발견된 요소 수: {len(menu_tabs)}")
-
+                
                 for i, menu_tab in enumerate(menu_tabs):
                     try:
                         tab_text = menu_tab.text.strip()
                         tab_href = menu_tab.get_attribute('href') or ''
-
+                        
                         print(f"탭 {i+1}: 텍스트='{tab_text}', href='{tab_href}'")
-
+                        
                         # 메뉴 탭인지 확인 (텍스트 또는 href로)
                         if ('메뉴' in tab_text) or ('menu' in tab_href.lower()):
                             print(f"메뉴 탭 발견! 클릭 시도: {tab_text}")
-
+                            
                             # 스크롤하여 요소가 보이도록 함
                             driver.execute_script("arguments[0].scrollIntoView(true);", menu_tab)
-                            time.sleep(0.5)  # 대기 시간 단축
-
+                            time.sleep(1)
+                            
                             # 클릭 시도
                             try:
                                 menu_tab.click()
@@ -419,18 +377,18 @@ def scrape_naver_place_info_selenium(url):
                             except:
                                 print("직접 클릭 실패, JavaScript 클릭 시도")
                                 driver.execute_script("arguments[0].click();", menu_tab)
-
+                            
                             menu_tab_clicked = True
                             print(f"메뉴 탭 클릭 완료: {tab_text}")
                             break
-
+                    
                     except Exception as e:
                         print(f"탭 {i+1} 처리 중 오류: {e}")
                         continue
-
+                
                 if menu_tab_clicked:
                     break
-
+                    
             except Exception as e:
                 print(f"선택자 {selector} 처리 중 오류: {e}")
                 continue
@@ -459,18 +417,13 @@ def scrape_naver_place_info_selenium(url):
                 except:
                     continue
         
-        # 경과 시간 체크
-        if time.time() - start_time > max_duration:
-            print(f"전체 타임아웃 초과: {time.time() - start_time:.1f}초")
-            return {'menu_items': [], 'operating_hours': None}
-
         # 메뉴 데이터 로딩 대기
         if menu_tab_clicked:
             print("메뉴 탭 클릭 성공! 메뉴 데이터 로딩 대기...")
-            time.sleep(2)  # 메뉴 로딩 대기 시간 단축 (5초 -> 2초)
+            time.sleep(5)  # 메뉴 로딩 대기 시간 증가
         else:
             print("메뉴 탭 클릭 실패, 현재 페이지에서 메뉴 추출 시도...")
-            time.sleep(1)  # 대기 시간 단축
+            time.sleep(2)
         
         # 메뉴 항목 추출
         menu_items = []
