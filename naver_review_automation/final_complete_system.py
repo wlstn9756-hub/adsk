@@ -24,7 +24,9 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 
 # 데이터베이스 설정
-DATABASE_URL = "sqlite:///./final_complete_system.db"
+# 데이터베이스 파일 절대 경로 설정
+BASE_DB_DIR = os.path.dirname(os.path.abspath(__file__))
+DATABASE_URL = f"sqlite:///{os.path.join(BASE_DB_DIR, 'final_complete_system.db')}"
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -3705,7 +3707,7 @@ async def fetch_naver_menu_api(
                 "message": "관리자 권한이 필요합니다."
             }, status_code=403)
 
-        from receipt_generator.naver_scraper import get_naver_place_menu, format_menu_for_textarea
+        from .receipt_generator.naver_scraper import get_naver_place_menu, format_menu_for_textarea
 
         body = await request.json()
         url = body.get('url')
@@ -3726,7 +3728,7 @@ async def fetch_naver_menu_api(
             }, status_code=400)
 
         # 7글자 필터링 적용
-        from receipt_generator.receipt_generator import smart_filter_menu
+        from .receipt_generator.receipt_generator import smart_filter_menu
         filtered_menu = []
         for menu_name, price in menu_list:
             filtered_name = smart_filter_menu(menu_name, max_length=7)
@@ -3789,7 +3791,7 @@ async def generate_receipt_api(
                 "success": False,
                 "message": "관리자 권한이 필요합니다."
             }, status_code=403)
-        from receipt_generator.receipt_generator import generate_receipts_batch_web, parse_menu_input
+        from .receipt_generator.receipt_generator import generate_receipts_batch_web, parse_menu_input
         from datetime import datetime
         import zipfile
         import io
