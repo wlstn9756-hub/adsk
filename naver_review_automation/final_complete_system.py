@@ -31,6 +31,26 @@ Base = declarative_base()
 
 # FastAPI 앱 생성
 app = FastAPI()
+
+# HTTPException 핸들러 추가 (API 엔드포인트에서 JSON 응답 보장)
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """API 엔드포인트에서 HTTPException 발생 시 항상 JSON 응답 반환"""
+    # API 경로인 경우 JSON 응답 반환
+    if request.url.path.startswith("/api/"):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"success": False, "message": exc.detail}
+        )
+    # 일반 경로인 경우 로그인 페이지로 리다이렉트 (401 에러)
+    if exc.status_code == 401:
+        return RedirectResponse(url="/login", status_code=302)
+    # 그 외 에러는 JSON 응답
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"success": False, "message": exc.detail}
+    )
+
 # 템플릿 디렉토리 절대 경로 설정
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
