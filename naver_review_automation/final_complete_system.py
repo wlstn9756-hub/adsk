@@ -532,7 +532,7 @@ async def admin_dashboard(request: Request, user = Depends(require_super_admin),
         'total': len(orders)
     }
 
-    return templates.TemplateResponse("admin_dashboard_ultimate.html", {
+    return templates.TemplateResponse("admin_dashboard_pro.html", {
         "request": request,
         "user": user,
         "orders": orders,
