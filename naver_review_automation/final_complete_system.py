@@ -3687,10 +3687,24 @@ async def receipt_generator_page(
 @app.post("/api/admin/receipt/fetch-menu")
 async def fetch_naver_menu_api(
     request: Request,
-    user = Depends(require_super_admin)
+    db: Session = Depends(get_db)
 ):
     """네이버 플레이스에서 메뉴 가져오기"""
     try:
+        # 수동 인증 처리 (JSON 응답 보장)
+        user = get_current_user(request, db)
+        if not user:
+            return JSONResponse({
+                "success": False,
+                "message": "로그인이 필요합니다."
+            }, status_code=401)
+
+        if user.role != "super_admin":
+            return JSONResponse({
+                "success": False,
+                "message": "관리자 권한이 필요합니다."
+            }, status_code=403)
+
         from receipt_generator.naver_scraper import get_naver_place_menu, format_menu_for_textarea
 
         body = await request.json()
@@ -3745,6 +3759,7 @@ async def fetch_naver_menu_api(
 
 @app.post("/api/admin/receipt/generate")
 async def generate_receipt_api(
+    request: Request,
     store_name: str = Form(...),
     biz_num: str = Form(...),
     owner_name: str = Form(...),
@@ -3757,10 +3772,23 @@ async def generate_receipt_api(
     start_hour: int = Form(9),
     end_hour: int = Form(22),
     apply_filter: bool = Form(False),
-    user = Depends(require_super_admin)
+    db: Session = Depends(get_db)
 ):
     """영수증 생성 API"""
     try:
+        # 수동 인증 처리 (JSON 응답 보장)
+        user = get_current_user(request, db)
+        if not user:
+            return JSONResponse({
+                "success": False,
+                "message": "로그인이 필요합니다."
+            }, status_code=401)
+
+        if user.role != "super_admin":
+            return JSONResponse({
+                "success": False,
+                "message": "관리자 권한이 필요합니다."
+            }, status_code=403)
         from receipt_generator.receipt_generator import generate_receipts_batch_web, parse_menu_input
         from datetime import datetime
         import zipfile
