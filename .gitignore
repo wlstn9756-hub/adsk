@@ -1,7 +1,7 @@
-# Database files
-*.db
-*.sqlite
-*.sqlite3
+# Database files (keeping DB files for deployment)
+# *.db
+# *.sqlite
+# *.sqlite3
 
 # Python
 __pycache__/
@@ -28,13 +28,13 @@ Thumbs.db
 # Logs
 *.log
 
-# Test files
-test_*.py
-*_test.py
+# Test files (keeping for deployment)
+# test_*.py
+# *_test.py
 
-# Temporary files
+# Temporary files (keeping backup files for deployment)
 *.tmp
-*.bak
+# *.bak
 ~*
 
 # Credentials
