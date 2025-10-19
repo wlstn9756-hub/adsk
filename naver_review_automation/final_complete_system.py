@@ -978,7 +978,8 @@ async def get_company_orders(
             order.completed_count = extracted_count
             db.commit()
 
-        if extracted_count >= order.total_count and order.status == 'approved':
+        # 자동 완료: 추출된 리뷰 수가 목표에 도달하면 자동으로 완료 처리
+        if extracted_count >= order.total_count and order.status in ['approved', 'in_progress']:
             order.status = 'completed'
             order.completed_at = datetime.now()
             db.commit()
@@ -1043,7 +1044,8 @@ async def get_all_orders(
             order.completed_count = extracted_count
             db.commit()
 
-        if extracted_count >= order.total_count and order.status == 'approved':
+        # 자동 완료: 추출된 리뷰 수가 목표에 도달하면 자동으로 완료 처리
+        if extracted_count >= order.total_count and order.status in ['approved', 'in_progress']:
             order.status = 'completed'
             order.completed_at = datetime.now()
             db.commit()
@@ -1106,6 +1108,21 @@ async def approve_order(
     order.status = "approved"
     order.approved_at = datetime.now()
     order.approved_by = user.id
+
+    # 승인 시 자동 완료 체크: 이미 추출된 리뷰가 목표에 도달했다면 바로 완료 처리
+    extracted_count = db.query(Review).filter(
+        Review.order_id == order.id,
+        Review.content != "내용 추출 대기중",
+        Review.content != None,
+        Review.content != "",
+        ~Review.content.like("추출 실패%")
+    ).count()
+
+    if extracted_count >= order.total_count:
+        order.status = 'completed'
+        order.completed_at = datetime.now()
+        order.completed_count = extracted_count
+
     db.commit()
 
     return {"success": True, "message": "주문이 승인되었습니다"}
