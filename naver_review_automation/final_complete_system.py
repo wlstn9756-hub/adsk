@@ -460,6 +460,32 @@ async def receipt_dashboard(request: Request, user = Depends(require_login), db:
         joinedload(ReceiptWorkOrder.reviews)
     ).filter(ReceiptWorkOrder.client_id == user.id).all()
 
+    # 헬퍼 함수: 성공적으로 추출된 리뷰인지 확인
+    def is_valid_review(review):
+        """리뷰가 정상적으로 추출되었는지 확인 (content와 receipt_date_str이 모두 유효한 경우)"""
+        if not review.content or not review.receipt_date_str:
+            return False
+
+        # 에러 메시지가 포함된 경우 필터링
+        error_keywords = ['내용 추출 대기중', '찾을 수 없습니다', '내용 없음', '에러', 'error']
+        content_lower = review.content.lower()
+        receipt_lower = review.receipt_date_str.lower()
+
+        for keyword in error_keywords:
+            if keyword in content_lower or keyword in receipt_lower:
+                return False
+
+        return True
+
+    # 고객사 계정: 각 주문에 대해 성공적으로 추출된 리뷰만 필터링
+    for order in orders:
+        # 원본 리뷰는 유지하되, 유효한 리뷰만 필터링
+        valid_reviews = [r for r in order.reviews if is_valid_review(r)]
+        # 고객사에게 보여줄 리뷰 목록으로 덮어쓰기
+        order.reviews = valid_reviews
+        # completed_count도 유효한 리뷰 개수로 업데이트
+        order.completed_count = len(valid_reviews)
+
     # 통계 계산
     stats = {
         'pending': len([o for o in orders if o.status == 'pending']),
@@ -1173,6 +1199,261 @@ async def reject_order(
     db.commit()
 
     return {"success": True, "message": "주문이 거절되었습니다"}
+
+# 업체별 리뷰 URL 목록 가져오기
+@app.get("/api/admin/orders/{order_id}/reviews")
+async def get_order_reviews(
+    order_id: int,
+    user = Depends(require_super_admin),
+    db: Session = Depends(get_db)
+):
+    """특정 주문의 리뷰 URL 목록 가져오기"""
+    try:
+        order = db.query(ReceiptWorkOrder).filter(ReceiptWorkOrder.id == order_id).first()
+        if not order:
+            return JSONResponse({
+                "success": False,
+                "message": "주문을 찾을 수 없습니다"
+            }, status_code=404)
+
+        reviews = db.query(Review).filter(Review.order_id == order_id).all()
+
+        return JSONResponse({
+            "success": True,
+            "reviews": [{
+                "id": review.id,
+                "review_url": review.review_url,
+                "content": review.content,
+                "extracted_at": review.extracted_at.isoformat() if review.extracted_at else None
+            } for review in reviews]
+        })
+    except Exception as e:
+        return JSONResponse({
+            "success": False,
+            "message": f"오류: {str(e)}"
+        }, status_code=500)
+
+@app.delete("/api/admin/orders/{order_id}/reviews")
+async def delete_order_reviews_only(
+    order_id: int,
+    user = Depends(require_super_admin),
+    db: Session = Depends(get_db)
+):
+    """업체의 리뷰만 전체 삭제 (주문은 유지)"""
+    try:
+        order = db.query(ReceiptWorkOrder).filter(ReceiptWorkOrder.id == order_id).first()
+
+        if not order:
+            return JSONResponse({"success": False, "message": "주문을 찾을 수 없습니다."}, status_code=404)
+
+        # 리뷰 개수 확인
+        review_count = db.query(Review).filter(Review.order_id == order_id).count()
+
+        if review_count == 0:
+            return {"success": True, "message": "삭제할 리뷰가 없습니다."}
+
+        # 모든 리뷰 삭제
+        db.query(Review).filter(Review.order_id == order_id).delete()
+
+        # 주문의 completed_count 초기화
+        order.completed_count = 0
+
+        # 완료 상태였다면 진행중으로 변경
+        if order.status == 'completed':
+            order.status = 'approved'
+            order.completed_at = None
+
+        db.commit()
+
+        return {"success": True, "message": f"{review_count}개의 리뷰가 삭제되었습니다. (주문은 유지됨)"}
+
+    except Exception as e:
+        db.rollback()
+        return JSONResponse({"success": False, "message": str(e)}, status_code=500)
+
+# 업체별 리뷰 URL 대량 추가
+@app.post("/api/admin/orders/{order_id}/reviews/bulk")
+async def add_order_reviews_bulk(
+    order_id: int,
+    request: Request,
+    user = Depends(require_super_admin),
+    db: Session = Depends(get_db)
+):
+    """특정 주문에 여러 리뷰 URL 한번에 추가"""
+    try:
+        order = db.query(ReceiptWorkOrder).filter(ReceiptWorkOrder.id == order_id).first()
+        if not order:
+            return JSONResponse({
+                "success": False,
+                "message": "주문을 찾을 수 없습니다"
+            }, status_code=404)
+
+        data = await request.json()
+        review_urls = data.get("review_urls", [])
+
+        if not review_urls:
+            return JSONResponse({
+                "success": False,
+                "message": "리뷰 URL이 없습니다"
+            }, status_code=400)
+
+        added_count = 0
+        for url in review_urls:
+            url = url.strip()
+            if not url:
+                continue
+
+            # 중복 체크
+            existing = db.query(Review).filter(
+                Review.order_id == order_id,
+                Review.review_url == url
+            ).first()
+
+            if existing:
+                continue
+
+            # 새 리뷰 추가
+            review = Review(
+                order_id=order_id,
+                review_url=url,
+                content="내용 추출 대기중",
+                rating=5,
+                review_date=datetime.now().date()
+            )
+            db.add(review)
+            added_count += 1
+
+        db.commit()
+
+        return JSONResponse({
+            "success": True,
+            "message": f"{added_count}개의 리뷰 URL이 추가되었습니다",
+            "count": added_count
+        })
+
+    except Exception as e:
+        db.rollback()
+        return JSONResponse({
+            "success": False,
+            "message": f"추가 중 오류: {str(e)}"
+        }, status_code=500)
+
+# 업체별 리뷰 추출
+@app.post("/api/admin/orders/{order_id}/extract-reviews")
+async def extract_order_reviews(
+    order_id: int,
+    user = Depends(require_super_admin),
+    db: Session = Depends(get_db)
+):
+    """특정 주문의 모든 리뷰 추출 (기존 시스템 로직 그대로 사용)"""
+    try:
+        from real_review_extractor import get_extractor
+        extractor = get_extractor()
+
+        order = db.query(ReceiptWorkOrder).filter(ReceiptWorkOrder.id == order_id).first()
+        if not order:
+            return JSONResponse({
+                "success": False,
+                "message": "주문을 찾을 수 없습니다"
+            }, status_code=404)
+
+        reviews = db.query(Review).filter(Review.order_id == order_id).all()
+
+        if not reviews:
+            return JSONResponse({
+                "success": False,
+                "message": "추출할 리뷰가 없습니다"
+            }, status_code=400)
+
+        success_count = 0
+        fail_count = 0
+        shop_name = order.business_name
+
+        for review in reviews:
+            try:
+                if not review.review_url:
+                    fail_count += 1
+                    continue
+
+                # 이미 추출된 경우 건너뛰기
+                if review.extracted_at and review.content:
+                    continue
+
+                # 이전 내용 저장 (카운팅 판단용)
+                old_content = review.content
+
+                # 실제 리뷰 내용 추출
+                review_text, receipt_date, metadata = extractor.extract_review(
+                    review.review_url,
+                    shop_name
+                )
+
+                if review_text and "오류" not in review_text and "찾을 수 없습니다" not in review_text:
+                    review.content = review_text
+                    review.receipt_date_str = receipt_date
+                    review.extracted_at = datetime.now()
+
+                    # 처음 추출 성공한 경우에만 카운팅 (기존 로직 그대로)
+                    if old_content == "내용 추출 대기중":
+                        # 영수증 날짜가 있는 경우만 카운팅 (필수 조건)
+                        if receipt_date:
+                            # 중복 체크 - 같은 업체명, 같은 URL, 같은 내용이 이미 추출된 경우
+                            existing = db.query(Review).join(ReceiptWorkOrder).filter(
+                                Review.id != review.id,
+                                ReceiptWorkOrder.business_name == order.business_name,
+                                Review.review_url == review.review_url,
+                                Review.content == review_text,
+                                Review.content != "내용 추출 대기중",
+                                Review.content != None,
+                                Review.content != ""
+                            ).first()
+
+                            if existing:
+                                # 중복이면 현재 리뷰 삭제
+                                print(f"[중복 발견] 리뷰 {review.id} - 동일 업체명/URL/내용 (삭제)")
+                                db.delete(review)
+                                fail_count += 1
+                            else:
+                                # 중복이 아닌 경우만 카운팅
+                                if order.completed_count < order.total_count:
+                                    order.completed_count += 1
+                                    print(f"리뷰 {review.id} 추출 완료 (영수증 날짜: {receipt_date}) - 카운팅: {order.completed_count}/{order.total_count}")
+                                else:
+                                    print(f"[초과 리뷰] 리뷰 {review.id} - completed_count가 이미 total_count 초과")
+                                success_count += 1
+                        else:
+                            print(f"[영수증 날짜 없음] 리뷰 {review.id} - 영수증 날짜를 찾을 수 없어 카운팅 제외")
+                            fail_count += 1
+
+                        # 주문 완료 체크
+                        if order.completed_count >= order.total_count and order.status != 'completed':
+                            order.status = 'completed'
+                            order.completed_at = datetime.now()
+                            print(f"[완료] 주문 {order.id} ({order.business_name}) - 상태 completed로 변경")
+
+                    db.commit()
+                else:
+                    print(f"리뷰 추출 실패 ({review.id}): {review_text}")
+                    fail_count += 1
+
+            except Exception as e:
+                print(f"리뷰 추출 실패 ({review.id}): {e}")
+                fail_count += 1
+                db.rollback()
+
+        return JSONResponse({
+            "success": True,
+            "message": f"추출 완료: 성공 {success_count}건, 실패 {fail_count}건",
+            "success_count": success_count,
+            "fail_count": fail_count
+        })
+
+    except Exception as e:
+        db.rollback()
+        return JSONResponse({
+            "success": False,
+            "message": f"추출 중 오류: {str(e)}"
+        }, status_code=500)
 
 # 엑셀 다운로드 (미승인 작업만)
 @app.get("/api/admin/export/excel")
@@ -3314,11 +3595,35 @@ def extract_reviews_background(review_ids: List[int]):
 
                 shop_name = order.business_name if order else None
 
-                # URL에서 리뷰 내용 추출
-                review_text, receipt_date, metadata = extractor.extract_review(
-                    review.review_url,
-                    shop_name
-                )
+                # URL에서 리뷰 내용 추출 (재시도 로직 포함)
+                max_retries = 2
+                review_text = None
+                receipt_date = None
+                metadata = {}
+
+                for attempt in range(max_retries):
+                    try:
+                        print(f"[시도 {attempt + 1}/{max_retries}] 리뷰 {review_id} 추출 중...")
+                        review_text, receipt_date, metadata = extractor.extract_review(
+                            review.review_url,
+                            shop_name
+                        )
+
+                        # 성공했으면 중단
+                        if review_text and "오류" not in review_text and "찾을 수 없습니다" not in review_text:
+                            print(f"[성공] 리뷰 {review_id} 추출 성공 (시도 {attempt + 1})")
+                            break
+                        else:
+                            # 실패했고 재시도 남아있으면 잠시 대기
+                            if attempt < max_retries - 1:
+                                print(f"[재시도] 리뷰 {review_id} 추출 실패, 3초 후 재시도...")
+                                import time
+                                time.sleep(3)
+                    except Exception as retry_error:
+                        print(f"[오류] 리뷰 {review_id} 추출 중 오류 (시도 {attempt + 1}): {retry_error}")
+                        if attempt < max_retries - 1:
+                            import time
+                            time.sleep(3)
 
                 if review_text and "오류" not in review_text and "찾을 수 없습니다" not in review_text:
                     # 이전 내용 저장 (카운팅 판단용)
@@ -3378,6 +3683,10 @@ def extract_reviews_background(review_ids: List[int]):
                     db.delete(review)
 
                 db.commit()
+
+                # 다음 리뷰 추출 전 잠시 대기 (브라우저 안정화)
+                import time
+                time.sleep(1)
 
             except Exception as e:
                 print(f"리뷰 {review_id} 추출 오류: {e}")
@@ -3536,7 +3845,7 @@ async def delete_client_order(
         db.rollback()
         return JSONResponse({"success": False, "message": str(e)}, status_code=500)
 
-# 관리자 주문 삭제 (모든 주문)
+# 관리자 주문 삭제
 @app.delete("/api/admin/orders/{order_id}")
 async def delete_admin_order(
     order_id: int,
@@ -3551,13 +3860,14 @@ async def delete_admin_order(
             return JSONResponse({"success": False, "message": "주문을 찾을 수 없습니다."}, status_code=404)
 
         # 관련 리뷰 삭제
+        review_count = db.query(Review).filter(Review.order_id == order_id).count()
         db.query(Review).filter(Review.order_id == order_id).delete()
 
         # 주문 삭제
         db.delete(order)
         db.commit()
 
-        return {"success": True, "message": "주문이 삭제되었습니다."}
+        return {"success": True, "message": f"주문과 관련 리뷰 {review_count}개가 삭제되었습니다."}
 
     except Exception as e:
         db.rollback()
@@ -3707,7 +4017,7 @@ async def fetch_naver_menu_api(
                 "message": "관리자 권한이 필요합니다."
             }, status_code=403)
 
-        from .receipt_generator.naver_scraper import get_naver_place_menu, format_menu_for_textarea
+        from receipt_generator.naver_scraper import get_naver_place_menu, format_menu_for_textarea
 
         body = await request.json()
         url = body.get('url')
@@ -3728,7 +4038,7 @@ async def fetch_naver_menu_api(
             }, status_code=400)
 
         # 7글자 필터링 적용
-        from .receipt_generator.receipt_generator import smart_filter_menu
+        from receipt_generator.receipt_generator import smart_filter_menu
         filtered_menu = []
         for menu_name, price in menu_list:
             filtered_name = smart_filter_menu(menu_name, max_length=7)
@@ -3791,7 +4101,7 @@ async def generate_receipt_api(
                 "success": False,
                 "message": "관리자 권한이 필요합니다."
             }, status_code=403)
-        from .receipt_generator.receipt_generator import generate_receipts_batch_web, parse_menu_input
+        from receipt_generator.receipt_generator import generate_receipts_batch_web, parse_menu_input
         from datetime import datetime
         import zipfile
         import io

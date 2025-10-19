@@ -50,20 +50,99 @@ class RealNaverReviewExtractor:
             self.chrome_available = False
             return False
 
-    def extract_direct_review_selenium(self, url: str) -> Tuple[str, str]:
-        """Selenium으로 개별 리뷰 페이지 추출"""
+    def extract_direct_review_selenium(self, url: str, shop_name: Optional[str] = None) -> Tuple[str, str]:
+        """Selenium으로 개별 리뷰 페이지 추출 (reviewId 기반)"""
         try:
             if not self.driver:
                 if not self.setup_selenium():
                     logger.error("Selenium 설정 실패, HTTP 방식으로 전환")
                     return self.extract_with_http(url)
 
-            logger.info(f"개별 리뷰 페이지 로딩: {url}")
-            self.driver.get(url)
-            time.sleep(4)  # 로딩 대기 시간 증가
+            # 이미 해당 URL에 있지 않은 경우에만 로드
+            if self.driver.current_url != url:
+                logger.info(f"개별 리뷰 페이지 로딩: {url}")
+                self.driver.get(url)
+                time.sleep(4)  # 로딩 대기 시간 증가
+            else:
+                logger.info(f"이미 로드된 페이지 사용: {url}")
 
             soup = BeautifulSoup(self.driver.page_source, 'html.parser')
 
+            # reviewId가 URL에 있는 경우 - 업체명으로 정확히 매칭!
+            if "reviewId=" in url and shop_name:
+                import re
+                from urllib.parse import urlparse, parse_qs
+
+                # URL에서 reviewId 추출
+                parsed = urlparse(url)
+                params = parse_qs(parsed.query)
+                review_id = params.get('reviewId', [None])[0]
+
+                logger.info(f"🎯 reviewId: {review_id}, 업체명: '{shop_name}'")
+
+                # 모든 리뷰 블록 찾기
+                review_blocks = soup.find_all('div', class_='hahVh2')
+                logger.info(f"리뷰 블록 {len(review_blocks)}개 발견")
+
+                target_review = None
+
+                # 1순위: 업체명으로 정확히 매칭 (가장 중요!)
+                for block in review_blocks:
+                    shop_elem = block.find('span', class_='pui__pv1E2a')
+                    if shop_elem:
+                        found_shop_name = shop_elem.get_text(strip=True)
+                        logger.info(f"  검사 중 - 업체명: '{found_shop_name}'")
+
+                        if found_shop_name == shop_name:
+                            logger.info(f"✅ 업체명 일치! '{shop_name}'")
+                            target_review = block
+                            break
+
+                # 2순위: reviewId로 찾기 (업체명으로 못 찾은 경우)
+                if not target_review and review_id:
+                    logger.info(f"업체명 매칭 실패, reviewId로 재시도: {review_id}")
+                    for block in review_blocks:
+                        block_html = str(block)
+                        if review_id in block_html:
+                            logger.info(f"✅ reviewId 일치하는 블록 발견!")
+                            target_review = block
+                            break
+
+                if target_review:
+                    # 리뷰 본문 추출
+                    review_text = ""
+                    review_div = target_review.find('div', class_='pui__vn15t2')
+                    if not review_div:
+                        review_elem = target_review.find('a', {'data-pui-click-code': 'reviewend.text'})
+                        if review_elem:
+                            review_text = review_elem.get_text(strip=True)
+                    else:
+                        review_text = review_div.get_text(strip=True)
+
+                    # 영수증 날짜 추출
+                    receipt_date = ""
+                    time_elem = target_review.find('time', {'aria-hidden': 'true'})
+                    if time_elem:
+                        receipt_date = time_elem.get_text(strip=True)
+
+                    # 업체명 확인
+                    shop_elem = target_review.find('span', class_='pui__pv1E2a')
+                    found_shop = shop_elem.get_text(strip=True) if shop_elem else "알 수 없음"
+                    logger.info(f"✅ 추출 성공 - 업체: {found_shop}, 리뷰: {review_text[:30]}..., 날짜: {receipt_date}")
+
+                    return (
+                        review_text or "리뷰 본문을 찾을 수 없습니다",
+                        receipt_date or "영수증 날짜를 찾을 수 없습니다"
+                    )
+                else:
+                    # 못 찾은 경우
+                    all_shops = [block.find('span', class_='pui__pv1E2a').get_text(strip=True)
+                                for block in review_blocks
+                                if block.find('span', class_='pui__pv1E2a')]
+                    logger.error(f"❌ 업체명 '{shop_name}'과 일치하는 리뷰 없음. 발견된 업체: {all_shops}")
+                    return f"업체명 '{shop_name}'과 일치하는 리뷰를 찾을 수 없습니다", "날짜 정보 없음"
+
+            # 일반 개별 리뷰 페이지 처리
             # 리뷰 본문 추출 - data-pui-click-code="reviewend.text"
             review_text = ""
             review_elem = soup.find('a', {'data-pui-click-code': 'reviewend.text'})
@@ -281,26 +360,54 @@ class RealNaverReviewExtractor:
             logger.info(f"리뷰 추출 시작: {url}")
             logger.info(f"Chrome 사용 가능: {self.chrome_available}")
 
+            # 단축 URL(naver.me)인 경우 먼저 리디렉션 확인
+            if "naver.me" in url and self.chrome_available:
+                logger.info("단축 URL 감지 - 리디렉션 확인 중")
+                if not self.driver:
+                    self.setup_selenium()
+
+                self.driver.get(url)
+                time.sleep(2)  # 리디렉션 대기
+                redirected_url = self.driver.current_url
+                logger.info(f"리디렉션된 URL: {redirected_url}")
+                url = redirected_url  # URL을 리디렉션된 URL로 변경
+
             # URL 패턴 확인 - 네이버 리뷰 URL 형식들
-            # 1. 개별 리뷰: /my/review/ 또는 /place/review/ugc/
-            # 2. 리뷰 목록: naver.me 단축 URL 또는 /place/feed/
-            is_direct_review = (
-                "/my/review/" in url or
-                "/place/review/ugc/" in url or
-                "/restaurant/" in url and "review" in url
-            )
+            # reviewId 파라미터가 있으면 특정 리뷰를 가리키는 것
+            has_review_id = "reviewId=" in url
+
+            # 진짜 개별 리뷰 페이지는 /place/review/ugc/ 같은 특정 패턴만
+            is_ugc_review = "/place/review/ugc/" in url
+
+            # /my/.../reviewfeed 는 리뷰 피드 페이지
+            is_my_reviewfeed = "/my/" in url and "reviewfeed" in url
+
+            # 기타 리뷰 목록 패턴
+            is_place_feed = "/place/feed/" in url or "/restaurant/" in url
+
+            # reviewId가 있으면 개별 리뷰 페이지처럼 처리 (해당 리뷰만 추출)
+            is_direct_review = is_ugc_review or has_review_id
+
+            logger.info(f"🔍 URL 패턴 분석:")
+            logger.info(f"  - URL: {url}")
+            logger.info(f"  - reviewId 파라미터: {has_review_id}")
+            logger.info(f"  - UGC 리뷰: {is_ugc_review}")
+            logger.info(f"  - My 리뷰피드: {is_my_reviewfeed}")
+            logger.info(f"  - Place 피드: {is_place_feed}")
+            logger.info(f"  - 최종 판정: {'개별 리뷰 직접 추출' if is_direct_review else '리뷰 목록에서 업체명 검색'}")
 
             if is_direct_review:
-                # 개별 리뷰 페이지
-                logger.info("개별 리뷰 페이지 처리")
+                # reviewId가 있거나 UGC 리뷰 - 페이지에 표시된 리뷰를 바로 추출
+                logger.info("✅ 개별 리뷰 직접 추출 (페이지의 리뷰 내용 가져오기)")
                 if self.chrome_available:
-                    review_text, receipt_date = self.extract_direct_review_selenium(url)
+                    review_text, receipt_date = self.extract_direct_review_selenium(url, shop_name)
                 else:
                     review_text, receipt_date = self.extract_with_http(url)
             else:
-                # 리뷰 목록 페이지 (naver.me, feed 등)
-                logger.info("리뷰 목록 페이지 처리")
+                # 리뷰 목록/피드 페이지 - shop_name으로 매칭 필요
+                logger.info("📋 리뷰 목록 페이지로 처리 - 업체명으로 리뷰 검색")
                 if not shop_name:
+                    logger.error("❌ 리뷰 목록 페이지인데 업체명이 없습니다")
                     return "업체명이 필요합니다", "업체명 누락", {}
 
                 if self.chrome_available:
