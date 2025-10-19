@@ -26,6 +26,22 @@ def get_chrome_driver():
     chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
     chrome_options.add_experimental_option('useAutomationExtension', False)
     chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36")
+
+    # Google API 관련 오류 방지 (QUOTA_EXCEEDED 오류 해결)
+    chrome_options.add_argument("--disable-background-networking")
+    chrome_options.add_argument("--disable-client-side-phishing-detection")
+    chrome_options.add_argument("--disable-default-apps")
+    chrome_options.add_argument("--disable-sync")
+    chrome_options.add_argument("--disable-translate")
+    chrome_options.add_argument("--metrics-recording-only")
+    chrome_options.add_argument("--no-first-run")
+    chrome_options.add_argument("--safebrowsing-disable-auto-update")
+    chrome_options.add_argument("--disable-features=MediaRouter")
+    chrome_options.add_argument("--disable-features=OptimizationHints")
+
+    # 로그 레벨 설정 (불필요한 로그 최소화)
+    chrome_options.add_argument("--log-level=3")
+    chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
     
     try:
         # ChromeDriver 자동 설치 및 사용
@@ -315,124 +331,68 @@ def scrape_naver_place_info_selenium(url):
     try:
         driver = get_chrome_driver()
         if not driver:
-            return []
-        
-        print(f"페이지 로딩 중: {url}")
-        driver.get(url)
-        
+            return {'menu_items': [], 'operating_hours': None}
+
+        # URL이 /home이나 다른 탭으로 끝나면 /menu로 변경
+        menu_url = url
+        if '/home' in url or '/review' in url or '/photo' in url:
+            menu_url = re.sub(r'/(home|review|photo).*', '/menu', url)
+            print(f"메뉴 URL로 변경: {menu_url}")
+        elif not url.endswith('/menu'):
+            # URL 끝에 /menu 추가
+            menu_url = url.rstrip('/') + '/menu'
+            print(f"메뉴 URL 추가: {menu_url}")
+
+        print(f"페이지 로딩 중: {menu_url}")
+        driver.get(menu_url)
+
         # 페이지 로딩 대기
-        WebDriverWait(driver, 10).until(
+        WebDriverWait(driver, 15).until(
             EC.presence_of_element_located((By.TAG_NAME, "body"))
         )
-        
+
+        # 추가 대기 시간 (JavaScript 로딩)
+        time.sleep(3)
+
+        # 페이지 스크롤 (동적 로딩 트리거)
+        print("페이지 스크롤하여 콘텐츠 로딩...")
+        driver.execute_script("window.scrollTo(0, 500);")
+        time.sleep(1)
+        driver.execute_script("window.scrollTo(0, 1000);")
+        time.sleep(1)
+        driver.execute_script("window.scrollTo(0, 1500);")
+        time.sleep(2)
+
         # 모바일 버전인지 확인
         is_mobile = 'm.place.naver.com' in url
         print(f"모바일 버전: {is_mobile}")
         
-        # 메뉴 탭 찾기 및 클릭 (모바일/데스크톱 공통)
-        print("메뉴 탭 찾기 시작...")
-        
-        # 정확한 메뉴 탭 선택자들
-        menu_tab_selectors = [
-            # 모바일 버전
-            'a[href*="/menu"]',
-            'a.tpj9w._tab-menu',
-            'a[role="tab"]',
-            'a[data-index="2"]',
-            '.tpj9w._tab-menu',
-            '[data-tab="menu"]',
-            # 추가 선택자들
-            '.tab-menu',
-            '.menu-tab',
-            'a[href*="menu"]'
-        ]
-        
-        menu_tab_clicked = False
-        
-        for selector in menu_tab_selectors:
-            try:
-                print(f"선택자 시도: {selector}")
-                menu_tabs = driver.find_elements(By.CSS_SELECTOR, selector)
-                print(f"발견된 요소 수: {len(menu_tabs)}")
-                
-                for i, menu_tab in enumerate(menu_tabs):
-                    try:
-                        tab_text = menu_tab.text.strip()
-                        tab_href = menu_tab.get_attribute('href') or ''
-                        
-                        print(f"탭 {i+1}: 텍스트='{tab_text}', href='{tab_href}'")
-                        
-                        # 메뉴 탭인지 확인 (텍스트 또는 href로)
-                        if ('메뉴' in tab_text) or ('menu' in tab_href.lower()):
-                            print(f"메뉴 탭 발견! 클릭 시도: {tab_text}")
-                            
-                            # 스크롤하여 요소가 보이도록 함
-                            driver.execute_script("arguments[0].scrollIntoView(true);", menu_tab)
-                            time.sleep(1)
-                            
-                            # 클릭 시도
-                            try:
-                                menu_tab.click()
-                                print("직접 클릭 성공")
-                            except:
-                                print("직접 클릭 실패, JavaScript 클릭 시도")
-                                driver.execute_script("arguments[0].click();", menu_tab)
-                            
-                            menu_tab_clicked = True
-                            print(f"메뉴 탭 클릭 완료: {tab_text}")
-                            break
-                    
-                    except Exception as e:
-                        print(f"탭 {i+1} 처리 중 오류: {e}")
-                        continue
-                
-                if menu_tab_clicked:
-                    break
-                    
-            except Exception as e:
-                print(f"선택자 {selector} 처리 중 오류: {e}")
-                continue
-        
-        if not menu_tab_clicked:
-            print("메뉴 탭을 찾을 수 없습니다. 페이지 스크롤 후 재시도...")
-            # 페이지 스크롤
-            driver.execute_script("window.scrollTo(0, document.body.scrollHeight/3);")
-            time.sleep(2)
-            
-            # 재시도
-            for selector in menu_tab_selectors[:3]:  # 주요 선택자만
-                try:
-                    menu_tabs = driver.find_elements(By.CSS_SELECTOR, selector)
-                    for menu_tab in menu_tabs:
-                        try:
-                            if '메뉴' in menu_tab.text or 'menu' in menu_tab.get_attribute('href', '').lower():
-                                print(f"스크롤 후 메뉴 탭 클릭: {menu_tab.text}")
-                                driver.execute_script("arguments[0].click();", menu_tab)
-                                menu_tab_clicked = True
-                                break
-                        except:
-                            continue
-                    if menu_tab_clicked:
-                        break
-                except:
-                    continue
-        
-        # 메뉴 데이터 로딩 대기
-        if menu_tab_clicked:
-            print("메뉴 탭 클릭 성공! 메뉴 데이터 로딩 대기...")
-            time.sleep(5)  # 메뉴 로딩 대기 시간 증가
-        else:
-            print("메뉴 탭 클릭 실패, 현재 페이지에서 메뉴 추출 시도...")
-            time.sleep(2)
+        # 메뉴 페이지 로딩 대기 (이미 /menu URL로 이동했음)
+        print("메뉴 콘텐츠 로딩 대기...")
+        time.sleep(5)
+
+        # 추가 스크롤로 더 많은 콘텐츠 로드
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(2)
         
         # 메뉴 항목 추출
         menu_items = []
-        
+
         print("메뉴 추출 시작...")
-        
+
         # 방법 1: span.lPzHi와 em 태그 직접 찾기 (우선순위)
         print("방법 1: span.lPzHi와 em 태그 직접 찾기...")
         try:
+            # 명시적 대기: span.lPzHi 요소가 로드될 때까지 기다림
+            try:
+                print("span.lPzHi 요소 로딩 대기...")
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "span.lPzHi"))
+                )
+                print("span.lPzHi 요소 로드 완료!")
+            except TimeoutException:
+                print("span.lPzHi 요소 대기 시간 초과 (요소가 없을 수 있음)")
+
             menu_name_elements = driver.find_elements(By.CSS_SELECTOR, "span.lPzHi")
             print(f"span.lPzHi 요소 {len(menu_name_elements)}개 발견")
             
@@ -488,26 +448,36 @@ def scrape_naver_place_info_selenium(url):
         except Exception as e:
             print(f"span.lPzHi 추출 실패: {e}")
         
-        # 방법 2: 기존 메뉴 선택자들 시도
+        # 방법 2: 기존 메뉴 선택자들 시도 + 새로운 선택자들
         if not menu_items:
-            print("방법 2: 기존 메뉴 선택자들 시도...")
-            
+            print("방법 2: 다양한 메뉴 선택자들 시도...")
+
             menu_selectors = [
+                # 2024년 업데이트된 네이버 플레이스 구조
+                "ul.O8qbU.nbAel li",
+                ".O8qbU li",
+                "ul[class*='menu'] li",
+                "div[class*='menu'] > div",
+
                 # 모바일 버전
                 ".place_bluelink_menu .list_menu .item_menu",
                 ".place_bluelink_menu .item_menu",
                 ".list_menu .item_menu",
                 ".item_menu",
-                
+
                 # 데스크톱 버전
                 ".place_section_content .list_menu .item_menu",
                 ".place_section_content .item_menu",
-                
+
                 # 일반적인 메뉴 구조
                 ".menu_list .menu_item",
                 "[class*='menu'] [class*='item']",
                 ".menu-item",
-                ".menu_item"
+                ".menu_item",
+
+                # 리스트 구조 (포괄적)
+                "ul li",
+                ".list li"
             ]
             
             for selector in menu_selectors:

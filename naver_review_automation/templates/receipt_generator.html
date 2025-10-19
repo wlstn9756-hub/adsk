@@ -218,6 +218,8 @@
             <h3>📋 사용 방법</h3>
             <ul>
                 <li>상점 정보와 메뉴를 입력하세요</li>
+                <li>네이버 플레이스 URL로 메뉴를 자동으로 가져올 수 있습니다</li>
+                <li>메뉴명은 7글자 이하로 자동 필터링됩니다</li>
                 <li>날짜 범위와 하루 생성 개수를 설정하세요</li>
                 <li>영수증 이미지가 ZIP 파일로 다운로드됩니다</li>
                 <li>생성된 영수증은 최소 50분 간격으로 생성됩니다</li>
@@ -260,7 +262,7 @@
                 <label>네이버 플레이스 URL (자동 메뉴 추출)</label>
                 <div style="display: flex; gap: 10px;">
                     <input type="text" id="naver_url" placeholder="https://m.place.naver.com/restaurant/...">
-                    <button type="button" onclick="fetchNaverMenu()" class="generate-button" style="width: auto; margin: 0; padding: 10px 20px; font-size: 1em;">
+                    <button type="button" onclick="fetchNaverMenu(event)" class="generate-button" style="width: auto; margin: 0; padding: 10px 20px; font-size: 1em;">
                         🔍 메뉴 가져오기
                     </button>
                 </div>
@@ -279,11 +281,10 @@
 김치찌개 8000"></textarea>
             </div>
 
-            <div class="form-group">
-                <div class="checkbox-group">
-                    <input type="checkbox" id="apply_filter" name="apply_filter">
-                    <label for="apply_filter">메뉴명 7글자 이하로 필터링 (네이버 영수증 형식)</label>
-                </div>
+            <div class="info-box" style="background: #fff3cd; border-left-color: #ffc107;">
+                <p style="margin: 0; color: #856404;">
+                    <strong>📌 자동 필터링:</strong> 메뉴명이 7글자를 초과하는 경우 자동으로 단축되거나 제외됩니다. (네이버 영수증 형식)
+                </p>
             </div>
 
             <h2 style="margin: 40px 0 20px; color: #333;">날짜 및 시간 설정</h2>
@@ -340,7 +341,7 @@
         document.querySelector('input[name="end_date"]').value = today;
 
         // 네이버 플레이스에서 메뉴 가져오기
-        async function fetchNaverMenu() {
+        async function fetchNaverMenu(event) {
             const url = document.getElementById('naver_url').value.trim();
             if (!url) {
                 alert('네이버 플레이스 URL을 입력해주세요.');
@@ -386,8 +387,8 @@
 
             const formData = new FormData(form);
 
-            // 체크박스 값 처리
-            formData.set('apply_filter', document.getElementById('apply_filter').checked);
+            // 7글자 필터 자동 적용
+            formData.set('apply_filter', 'true');
 
             generateBtn.disabled = true;
             loading.classList.add('active');
