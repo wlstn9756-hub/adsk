@@ -4217,11 +4217,16 @@ async def download_receipt_image(
             raise HTTPException(status_code=404, detail="이미지를 찾을 수 없습니다")
 
         image_path = images[image_index]
-        # 절대 경로로 변환 (DB 경로에서 naver_review_automation 제거)
+        # 절대 경로로 변환
         if not os.path.isabs(image_path):
-            # DB 경로가 naver_review_automation/uploads/... 형태이면 상위 디렉토리로 이동
+            # 경로 정규화 (백슬래시를 슬래시로 변환)
+            image_path = image_path.replace("\\", "/")
+
+            # DB 경로가 naver_review_automation/uploads/... 형태이면 제거
             if image_path.startswith("naver_review_automation/"):
                 image_path = image_path.replace("naver_review_automation/", "", 1)
+
+            # BASE_DIR과 결합
             image_path = os.path.join(BASE_DIR, image_path)
 
         if not os.path.exists(image_path):
@@ -4258,12 +4263,17 @@ async def download_review_excel(
     if not order.review_excel_path:
         raise HTTPException(status_code=404, detail="리뷰 엑셀 파일이 없습니다")
 
-    # 절대 경로로 변환 (DB 경로에서 naver_review_automation 제거)
+    # 절대 경로로 변환
     excel_path = order.review_excel_path
     if not os.path.isabs(excel_path):
-        # DB 경로가 naver_review_automation/uploads/... 형태이면 상위 디렉토리로 이동
+        # 경로 정규화 (백슬래시를 슬래시로 변환)
+        excel_path = excel_path.replace("\\", "/")
+
+        # DB 경로가 naver_review_automation/uploads/... 형태이면 제거
         if excel_path.startswith("naver_review_automation/"):
             excel_path = excel_path.replace("naver_review_automation/", "", 1)
+
+        # BASE_DIR과 결합
         excel_path = os.path.join(BASE_DIR, excel_path)
 
     if not os.path.exists(excel_path):
@@ -4298,12 +4308,17 @@ async def download_review_photos(
     if not order.review_photos_path:
         raise HTTPException(status_code=404, detail="리뷰 사진 파일이 없습니다")
 
-    # 절대 경로로 변환 (DB 경로에서 naver_review_automation 제거)
+    # 절대 경로로 변환
     photos_path = order.review_photos_path
     if not os.path.isabs(photos_path):
-        # DB 경로가 naver_review_automation/uploads/... 형태이면 상위 디렉토리로 이동
+        # 경로 정규화 (백슬래시를 슬래시로 변환)
+        photos_path = photos_path.replace("\\", "/")
+
+        # DB 경로가 naver_review_automation/uploads/... 형태이면 제거
         if photos_path.startswith("naver_review_automation/"):
             photos_path = photos_path.replace("naver_review_automation/", "", 1)
+
+        # BASE_DIR과 결합
         photos_path = os.path.join(BASE_DIR, photos_path)
 
     if not os.path.exists(photos_path):
