@@ -57,6 +57,10 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
+# 정적 파일 마운트 (static, uploads)
+app.mount("/naver_review_automation/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
+app.mount("/naver_review_automation/uploads", StaticFiles(directory=os.path.join(BASE_DIR, "uploads")), name="uploads")
+
 # 세션 저장소 (메모리 기반)
 sessions = {}
 
@@ -763,8 +767,8 @@ async def create_receipt_order(
         now = datetime.now()
         order_no = f"RC{now.strftime('%Y%m%d%H%M%S')}"
 
-        # 이미지 파일 저장
-        upload_dir = "uploads/orders"
+        # 이미지 파일 저장 (절대 경로 사용)
+        upload_dir = os.path.join(BASE_DIR, "uploads", "orders")
         os.makedirs(upload_dir, exist_ok=True)
 
         saved_image_paths = []
@@ -786,7 +790,9 @@ async def create_receipt_order(
                 content = await file.read()
                 f.write(content)
 
-            saved_image_paths.append(file_path)
+            # 상대 경로로 저장 (DB에는 상대 경로 저장)
+            relative_path = os.path.join("naver_review_automation", "uploads", "orders", file_name)
+            saved_image_paths.append(relative_path)
 
         # 필수 필드 검증
         if not place_number.strip():
@@ -806,29 +812,31 @@ async def create_receipt_order(
         start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
         end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
 
-        # 리뷰 자료 파일 저장 (선택사항)
+        # 리뷰 자료 파일 저장 (선택사항, 절대 경로 사용)
         review_excel_path = None
         review_photos_path = None
 
         if review_excel and review_excel.filename:
-            review_dir = "uploads/review_assets"
+            review_dir = os.path.join(BASE_DIR, "uploads", "review_assets")
             os.makedirs(review_dir, exist_ok=True)
             excel_filename = f"{order_no}_review.xlsx"
             excel_path = os.path.join(review_dir, excel_filename)
             with open(excel_path, "wb") as f:
                 content = await review_excel.read()
                 f.write(content)
-            review_excel_path = excel_path
+            # DB에는 상대 경로 저장
+            review_excel_path = os.path.join("naver_review_automation", "uploads", "review_assets", excel_filename)
 
         if review_photos and review_photos.filename:
-            review_dir = "uploads/review_assets"
+            review_dir = os.path.join(BASE_DIR, "uploads", "review_assets")
             os.makedirs(review_dir, exist_ok=True)
             zip_filename = f"{order_no}_photos.zip"
             zip_path = os.path.join(review_dir, zip_filename)
             with open(zip_path, "wb") as f:
                 content = await review_photos.read()
                 f.write(content)
-            review_photos_path = zip_path
+            # DB에는 상대 경로 저장
+            review_photos_path = os.path.join("naver_review_automation", "uploads", "review_assets", zip_filename)
 
         # 고객사별 단가 가져오기
         company = db.query(Company).filter(Company.id == user.company_id).first()
