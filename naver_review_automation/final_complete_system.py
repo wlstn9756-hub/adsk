@@ -4179,6 +4179,126 @@ async def generate_receipt_api(
             "message": f"영수증 생성 실패: {str(e)}"
         }, status_code=500)
 
+# 첨부파일 다운로드 API - 영수증 이미지
+@app.get("/api/admin/orders/{order_id}/download/receipt-image/{image_index}")
+async def download_receipt_image(
+    order_id: int,
+    image_index: int,
+    user = Depends(require_super_admin),
+    db: Session = Depends(get_db)
+):
+    """영수증 이미지 다운로드 (업체명 포함)"""
+    order = db.query(ReceiptWorkOrder).filter(ReceiptWorkOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="주문을 찾을 수 없습니다")
+
+    if not order.attachment_images:
+        raise HTTPException(status_code=404, detail="첨부 이미지가 없습니다")
+
+    try:
+        import json
+        images = json.loads(order.attachment_images)
+        if image_index >= len(images):
+            raise HTTPException(status_code=404, detail="이미지를 찾을 수 없습니다")
+
+        image_path = images[image_index]
+        # 절대 경로로 변환
+        if not os.path.isabs(image_path):
+            image_path = os.path.join(BASE_DIR, image_path)
+
+        if not os.path.exists(image_path):
+            raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다")
+
+        # 업체명을 포함한 파일명 생성
+        from urllib.parse import quote
+        file_ext = os.path.splitext(image_path)[1]
+        filename = f"{order.business_name}_영수증이미지{image_index + 1}{file_ext}"
+        encoded_filename = quote(filename)
+
+        return FileResponse(
+            path=image_path,
+            filename=filename,
+            headers={
+                "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
+            }
+        )
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="이미지 정보 파싱 실패")
+
+# 첨부파일 다운로드 API - 리뷰 엑셀
+@app.get("/api/admin/orders/{order_id}/download/review-excel")
+async def download_review_excel(
+    order_id: int,
+    user = Depends(require_super_admin),
+    db: Session = Depends(get_db)
+):
+    """리뷰 엑셀 파일 다운로드 (업체명 포함)"""
+    order = db.query(ReceiptWorkOrder).filter(ReceiptWorkOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="주문을 찾을 수 없습니다")
+
+    if not order.review_excel_path:
+        raise HTTPException(status_code=404, detail="리뷰 엑셀 파일이 없습니다")
+
+    # 절대 경로로 변환
+    excel_path = order.review_excel_path
+    if not os.path.isabs(excel_path):
+        excel_path = os.path.join(BASE_DIR, excel_path)
+
+    if not os.path.exists(excel_path):
+        raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다")
+
+    # 업체명을 포함한 파일명 생성
+    from urllib.parse import quote
+    file_ext = os.path.splitext(excel_path)[1]
+    filename = f"{order.business_name}_복붙멘트{file_ext}"
+    encoded_filename = quote(filename)
+
+    return FileResponse(
+        path=excel_path,
+        filename=filename,
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
+        }
+    )
+
+# 첨부파일 다운로드 API - 리뷰 사진 ZIP
+@app.get("/api/admin/orders/{order_id}/download/review-photos")
+async def download_review_photos(
+    order_id: int,
+    user = Depends(require_super_admin),
+    db: Session = Depends(get_db)
+):
+    """리뷰 사진 ZIP 파일 다운로드 (업체명 포함)"""
+    order = db.query(ReceiptWorkOrder).filter(ReceiptWorkOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="주문을 찾을 수 없습니다")
+
+    if not order.review_photos_path:
+        raise HTTPException(status_code=404, detail="리뷰 사진 파일이 없습니다")
+
+    # 절대 경로로 변환
+    photos_path = order.review_photos_path
+    if not os.path.isabs(photos_path):
+        photos_path = os.path.join(BASE_DIR, photos_path)
+
+    if not os.path.exists(photos_path):
+        raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다")
+
+    # 업체명을 포함한 파일명 생성
+    from urllib.parse import quote
+    file_ext = os.path.splitext(photos_path)[1]
+    filename = f"{order.business_name}_사진{file_ext}"
+    encoded_filename = quote(filename)
+
+    return FileResponse(
+        path=photos_path,
+        filename=filename,
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
+        }
+    )
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
