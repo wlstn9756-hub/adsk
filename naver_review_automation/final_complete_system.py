@@ -767,6 +767,13 @@ async def create_receipt_order(
         now = datetime.now()
         order_no = f"RC{now.strftime('%Y%m%d%H%M%S')}"
 
+        # 영수증 이미지 필수 검증
+        if not attachment_images or len(attachment_images) == 0 or not attachment_images[0].filename:
+            return JSONResponse({
+                "success": False,
+                "message": "영수증 이미지는 필수입니다. 최소 1개 이상 업로드해주세요."
+            }, status_code=400)
+
         # 이미지 파일 저장 (절대 경로 사용)
         upload_dir = os.path.join(BASE_DIR, "uploads", "orders")
         os.makedirs(upload_dir, exist_ok=True)
