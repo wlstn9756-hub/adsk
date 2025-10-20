@@ -4217,12 +4217,15 @@ async def download_receipt_image(
             raise HTTPException(status_code=404, detail="이미지를 찾을 수 없습니다")
 
         image_path = images[image_index]
-        # 절대 경로로 변환
+        # 절대 경로로 변환 (DB 경로에서 naver_review_automation 제거)
         if not os.path.isabs(image_path):
+            # DB 경로가 naver_review_automation/uploads/... 형태이면 상위 디렉토리로 이동
+            if image_path.startswith("naver_review_automation/"):
+                image_path = image_path.replace("naver_review_automation/", "", 1)
             image_path = os.path.join(BASE_DIR, image_path)
 
         if not os.path.exists(image_path):
-            raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다")
+            raise HTTPException(status_code=404, detail=f"파일을 찾을 수 없습니다: {image_path}")
 
         # 업체명을 포함한 파일명 생성
         from urllib.parse import quote
@@ -4255,13 +4258,16 @@ async def download_review_excel(
     if not order.review_excel_path:
         raise HTTPException(status_code=404, detail="리뷰 엑셀 파일이 없습니다")
 
-    # 절대 경로로 변환
+    # 절대 경로로 변환 (DB 경로에서 naver_review_automation 제거)
     excel_path = order.review_excel_path
     if not os.path.isabs(excel_path):
+        # DB 경로가 naver_review_automation/uploads/... 형태이면 상위 디렉토리로 이동
+        if excel_path.startswith("naver_review_automation/"):
+            excel_path = excel_path.replace("naver_review_automation/", "", 1)
         excel_path = os.path.join(BASE_DIR, excel_path)
 
     if not os.path.exists(excel_path):
-        raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다")
+        raise HTTPException(status_code=404, detail=f"파일을 찾을 수 없습니다: {excel_path}")
 
     # 업체명을 포함한 파일명 생성
     from urllib.parse import quote
@@ -4292,13 +4298,16 @@ async def download_review_photos(
     if not order.review_photos_path:
         raise HTTPException(status_code=404, detail="리뷰 사진 파일이 없습니다")
 
-    # 절대 경로로 변환
+    # 절대 경로로 변환 (DB 경로에서 naver_review_automation 제거)
     photos_path = order.review_photos_path
     if not os.path.isabs(photos_path):
+        # DB 경로가 naver_review_automation/uploads/... 형태이면 상위 디렉토리로 이동
+        if photos_path.startswith("naver_review_automation/"):
+            photos_path = photos_path.replace("naver_review_automation/", "", 1)
         photos_path = os.path.join(BASE_DIR, photos_path)
 
     if not os.path.exists(photos_path):
-        raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다")
+        raise HTTPException(status_code=404, detail=f"파일을 찾을 수 없습니다: {photos_path}")
 
     # 업체명을 포함한 파일명 생성
     from urllib.parse import quote
